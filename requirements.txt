@@ -1,0 +1,13 @@
+torch~=2.6.0
+PyYAML~=6.0.2
+numpy~=2.2.3
+pillow~=11.1.0
+scipy~=1.15.2
+matplotlib~=3.10.0
+torchvision~=0.21.0
+opencv-python~=4.11.0.86
+scikit-image~=0.25.2
+
+compressai~=1.2.6
+timm~=1.0.15
+tensorboardX~=2.6.2.2
