@@ -8,27 +8,18 @@ from .elic import LightWeightELIC
 class ResidualJPEGCompression(CompressionModel):
     """
     Combined JPEG and neural compression model that compresses residuals.
+    Optimized for CPU→CPU→GPU data flow.
     """
 
     def __init__(self, base_model=None, jpeg_quality=25, **kwargs):
-        """
-        Initialize the residual compression model.
-
-        Args:
-            base_model (nn.Module): Base neural compression model (TestModel)
-            jpeg_quality (int): JPEG quality factor (0-100)
-        """
         super().__init__()
-
-        # JPEG compression module
         self.jpeg = JPEGCompression(quality=jpeg_quality)
-
-        # Neural compression model for residuals
         self.residual_model = base_model if base_model is not None else LightWeightELIC(**kwargs)
 
     def forward(self, x, noisequant=False):
         """
         Forward pass for combined JPEG + residual compression.
+        Optimized for CPU→CPU→GPU data flow.
 
         Args:
             x (torch.Tensor): Input image tensor [B, 3, H, W] with values in [0, 1]
@@ -37,19 +28,34 @@ class ResidualJPEGCompression(CompressionModel):
         Returns:
             dict: Results including reconstructed image and likelihood information
         """
-        # JPEG compression and decompression
-        jpeg_decoded = self.jpeg(x)
+        # Record the original device for later use
+        device = x.device
 
-        # Calculate residual
-        residual = x - jpeg_decoded
+        # JPEG operations should happen on CPU
+        # If tensor is on GPU, move it to CPU first
+        if device.type == 'cuda':
+            x_cpu = x.cpu()
+        else:
+            x_cpu = x
 
-        # Compress residual with neural model
+        # Perform JPEG compression/decompression on CPU
+        jpeg_decoded_cpu = self.jpeg(x_cpu)
+
+        # Calculate residual on CPU
+        residual_cpu = x_cpu - jpeg_decoded_cpu
+
+        # Now move the processed data to the original device (GPU if applicable)
+        # for neural network processing
+        jpeg_decoded = jpeg_decoded_cpu.to(device)
+        residual = residual_cpu.to(device)
+
+        # Process residual with neural model (on GPU if available)
         residual_results = self.residual_model(residual, noisequant=noisequant)
 
         # Get reconstructed residual
         residual_hat = residual_results['x_hat']
 
-        # Final reconstruction: JPEG decoded + residual reconstruction
+        # Final reconstruction on original device
         x_hat = jpeg_decoded + residual_hat
 
         # Clamp to valid range

@@ -14,8 +14,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from ..models import LightWeightELIC, ResidualJPEGCompression
-
+from ..models import LightWeightELIC, ResidualJPEGCompression, LightWeightCheckerboard
 
 
 def parse_args(argv):
@@ -133,14 +132,23 @@ def main(argv):
     train_dataset = ImageFolder(args.dataset, split="train", transform=train_transforms)
     test_dataset = ImageFolder(args.dataset, split="test", transform=test_transforms)
 
-    device = "cuda" if args.cuda and torch.cuda.is_available() else "cpu"
+    # With this code for Apple Silicon support
+    if args.cuda:
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+    else:
+        device = "cpu"
 
     train_dataloader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         shuffle=True,
-        pin_memory=(device == "cuda"),
+        pin_memory=False,  # Changed from (device == "cuda") to False to keep tensors on CPU
     )
 
     test_dataloader = DataLoader(
@@ -148,11 +156,11 @@ def main(argv):
         batch_size=args.test_batch_size,
         num_workers=args.num_workers,
         shuffle=False,
-        pin_memory=(device == "cuda"),
+        pin_memory=False,  # Changed from (device == "cuda") to False to keep tensors on CPU
     )
 
     # net = ELIC(N=args.N, M=args.M)
-    base_model = LightWeightELIC(N=args.N, M=args.M)
+    base_model = LightWeightCheckerboard(N=args.N, M=args.M)
     net = ResidualJPEGCompression(
             base_model=base_model,
             jpeg_quality=25

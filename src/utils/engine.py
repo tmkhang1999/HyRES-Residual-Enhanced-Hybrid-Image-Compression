@@ -16,11 +16,11 @@ def train_one_epoch(
     start = time.time()
 
     for i, d in enumerate(train_dataloader):
-        d = d.to(device)
-
         optimizer.zero_grad()
         aux_optimizer.zero_grad()
         out_net = model(d, noisequant)
+
+        d = d.to(device)
 
         out_criterion = criterion(out_net, d)
         train_bpp_loss.update(out_criterion["bpp_loss"].item())
