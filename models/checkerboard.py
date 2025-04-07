@@ -8,6 +8,7 @@ from compressai.layers import GDN
 from compressai.models.base import CompressionModel
 from compressai.models.sensetime import ResidualBottleneckBlock
 from compressai.models.utils import conv, deconv, update_registered_buffers
+from compressai.ops import quantize_ste
 
 from models.layers import AttentionBlock, conv3x3, conv1x1, CheckboardMaskedConv2d
 from models.utils.quantization import Quantizer
@@ -86,16 +87,25 @@ class LightWeightCheckerboard(CompressionModel):
             conv1x1(512, 2 * M)
         )
 
-    def forward(self, x):
+    def forward(self, x, noisequant=False):
         # Analysis and hyperprior
         y = self.g_a(x)
+        device = x.device
+
         z = self.h_a(y)
         z_hat, z_likelihoods = self.entropy_bottleneck(z)
+
+        if not noisequant:
+            z_offset = self.entropy_bottleneck._get_medians()
+            z_tmp = z - z_offset
+            z_hat = quantize_ste(z_tmp) + z_offset
+
         latent_params = self.h_s(z_hat)
 
         # Split into anchor/non-anchor
-        y_anchor = torch.zeros_like(y)
-        y_non_anchor = torch.zeros_like(y)
+        y_anchor = torch.zeros_like(y, device=device)
+        y_non_anchor = torch.zeros_like(y, device=device)
+
         y_anchor[:, :, 0::2, 0::2] = y[:, :, 0::2, 0::2]
         y_anchor[:, :, 1::2, 1::2] = y[:, :, 1::2, 1::2]
         y_non_anchor[:, :, 0::2, 1::2] = y[:, :, 0::2, 1::2]
@@ -108,7 +118,7 @@ class LightWeightCheckerboard(CompressionModel):
         scales_anchor, means_anchor = anchor_params.chunk(2, 1)
 
         # Quantize anchor pixels
-        y_anchor_hat = (self.quantizer.quantize(y_anchor, "noise") if self.training
+        y_anchor_hat = (self.quantizer.quantize(y_anchor, "noise") if noisequant
                         else self.quantizer.quantize(y_anchor - means_anchor, "ste") + means_anchor)
 
         # Process non-anchor pixels using anchor context
@@ -119,7 +129,7 @@ class LightWeightCheckerboard(CompressionModel):
         scales_non_anchor, means_non_anchor = non_anchor_params.chunk(2, 1)
 
         # Quantize non-anchor pixels
-        y_non_anchor_hat = (self.quantizer.quantize(y_non_anchor, "noise") if self.training
+        y_non_anchor_hat = (self.quantizer.quantize(y_non_anchor, "noise") if noisequant
                             else self.quantizer.quantize(y_non_anchor - means_non_anchor, "ste") + means_non_anchor)
 
         # Combine and reconstruct
