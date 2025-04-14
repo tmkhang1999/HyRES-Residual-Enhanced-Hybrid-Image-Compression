@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from ..models import LightWeightELIC, ResidualJPEGCompression, LightWeightCheckerboard
+from ..models import LightWeightELICWithCheckerboard, ResidualJPEGCompression
 
 
 def parse_args(argv):
@@ -160,7 +160,7 @@ def main(argv):
     )
 
     # net = ELIC(N=args.N, M=args.M)
-    base_model = LightWeightCheckerboard(N=args.N, M=args.M)
+    base_model = LightWeightELICWithCheckerboard(N=args.N, M=args.M)
     net = ResidualJPEGCompression(
             base_model=base_model,
             jpeg_quality=25
