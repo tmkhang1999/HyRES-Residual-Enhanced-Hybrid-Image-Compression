@@ -2,8 +2,7 @@ import math
 
 import torch
 import torch.nn as nn
-from compressai.entropy_models import EntropyBottleneck
-from compressai.entropy_models import GaussianConditional
+from compressai.entropy_models import EntropyBottleneck, GaussianConditional
 from compressai.layers import GDN
 from compressai.models.base import CompressionModel
 from compressai.models.sensetime import ResidualBottleneckBlock

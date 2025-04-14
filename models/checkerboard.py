@@ -21,7 +21,7 @@ def get_scale_table(min=SCALES_MIN, max=SCALES_MAX, levels=SCALES_LEVELS):
     return torch.exp(torch.linspace(math.log(min), math.log(max), levels))
 
 
-class LightWeightCheckerboard(CompressionModel):
+class LightWeightELICWithCheckerboard(CompressionModel):
     def __init__(self, N=192, M=320):
         super().__init__()
         self.N, self.M = N, M
@@ -284,7 +284,7 @@ class LightWeightCheckerboard(CompressionModel):
 
 
 if __name__ == "__main__":
-    model = LightWeightCheckerboard(N=192, M=320)
-    input = torch.Tensor(1, 3, 256, 256)
-    output = model(input)
-    print(output["x_hat"].shape)  # Should be (1, 3, 256, 256)
+    model = LightWeightELICWithCheckerboard(N=128, M=192)
+    # print the number of parameters
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Number of parameters: {num_params / 1e6:.2f}M")
