@@ -1,8 +1,24 @@
 #!/bin/bash
 
+## This script sets up the environment
+# Install miniconda
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Create and activate a conda environment (recommended for Python 3.12+)
+conda create -y -n myenv python=3.12
+conda activate myenv
+
+# Upgrade pip (optional with conda, but can still be done)
+python -m pip install --upgrade pip
+
 # Install the required Python packages
 pip install -r requirements.txt
 
+## Download and prepare the mini-imagenet dataset
 # Install kaggle CLI if not already installed
 pip install --user kaggle
 
@@ -27,8 +43,8 @@ mkdir -p data/train data/test
 
 # Unzip the dataset
 echo "Extracting dataset..."
-unzip archive.zip -d ./data/train
-rm -rf archive.zip
+unzip miniimagenet.zip -d ./data/train
+rm -rf miniimagenet.zip
 
-# Move the images to the appropriate directories
+# Reorganize the dataset into train/test folders
 python ./data/reorganize.py
