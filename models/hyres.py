@@ -1,8 +1,8 @@
 import torch
-import torch.nn as nn
 from compressai.models import CompressionModel
-from .utils.jpeg_compression import JPEGCompression
+
 from .elic import LightWeightELIC
+from .utils.turbo_jpeg_compression import TurboJPEGCompression
 
 
 class ResidualJPEGCompression(CompressionModel):
@@ -13,7 +13,7 @@ class ResidualJPEGCompression(CompressionModel):
 
     def __init__(self, base_model=None, jpeg_quality=25, **kwargs):
         super().__init__()
-        self.jpeg = JPEGCompression(quality=jpeg_quality)
+        self.jpeg = TurboJPEGCompression(quality=jpeg_quality)
         self.residual_model = base_model if base_model is not None else LightWeightELIC(**kwargs)
 
     def forward(self, x, noisequant=False):
@@ -29,11 +29,10 @@ class ResidualJPEGCompression(CompressionModel):
             dict: Results including reconstructed image and likelihood information
         """
         # Record the original device for later use
-        device = x.device
+        device = next(self.parameters()).device
 
         # JPEG operations should happen on CPU
-        # If tensor is on GPU, move it to CPU first
-        if device.type == 'cuda':
+        if x.device == 'cuda':
             x_cpu = x.cpu()
         else:
             x_cpu = x
