@@ -1,7 +1,6 @@
-import torch
-import torch.nn.functional as F
-from pytorch_msssim import ms_ssim
 import lpips
+import torch
+from pytorch_msssim import ms_ssim
 
 
 class CompressionMetrics:

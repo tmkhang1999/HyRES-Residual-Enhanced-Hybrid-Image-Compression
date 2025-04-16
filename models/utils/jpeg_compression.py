@@ -70,7 +70,7 @@ if __name__ == "__main__":
     jpeg_compressor = JPEGCompression(quality=1)
 
     # Load image and ensure it's RGB
-    image = Image.open("/Users/khangtran/Documents/Programming/Research/HyRES/data/kodak/kodim01.png").convert("RGB")
+    image = Image.open("/data/test/kodim01.png").convert("RGB")
 
     # Convert to tensor and add batch dimension
     image_tensor = transforms.ToTensor()(image).unsqueeze(0)

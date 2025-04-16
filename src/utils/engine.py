@@ -18,8 +18,11 @@ def train_one_epoch(
     for i, d in enumerate(train_dataloader):
         optimizer.zero_grad()
         aux_optimizer.zero_grad()
+
+        # Keep data on CPU for JPEG compression, then move to GPU for neural compression
         out_net = model(d, noisequant)
 
+        # Move data to GPU after JPEG compression
         d = d.to(device)
 
         out_criterion = criterion(out_net, d)

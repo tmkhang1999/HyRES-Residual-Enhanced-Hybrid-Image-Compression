@@ -4,17 +4,25 @@ import random
 import sys
 
 import torch
+torch.backends.nnpack.enabled = False
+torch.backends.mkldnn.enabled = False
+torch.backends.mkl.enabled = False
+
 import torch.optim as optim
-from .utils import ImageFolder, DelfileList, CustomDataParallel, configure_optimizers, train_one_epoch, test_epoch, \
-    save_checkpoint
-from .losses import RateDistortionLoss
 from PIL import ImageFile
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
+from .losses import RateDistortionLoss
+from .utils import ImageFolder, DelfileList, CustomDataParallel, configure_optimizers, train_one_epoch, test_epoch, \
+    save_checkpoint
+
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from ..models import LightWeightELIC, ResidualJPEGCompression, LightWeightCheckerboard
+from models import ResidualJPEGCompression, LightWeightCheckerboard
 
 
 def parse_args(argv):
@@ -24,15 +32,21 @@ def parse_args(argv):
     )
     parser.add_argument(
         "--N",
-        default=192,
+        default=128,
         type=int,
         help="Number of channels of main codec",
     )
     parser.add_argument(
         "--M",
-        default=320,
+        default=192,
         type=int,
         help="Number of channels of latent",
+    )
+    parser.add_argument(
+        "--jpeg-quality",
+        default=10,
+        type=int,
+        help="JPEG quality factor (default: %(default)s)",
     )
     parser.add_argument(
         "-e",
@@ -84,7 +98,8 @@ def parse_args(argv):
         default=(256, 256),
         help="Size of the patches to be cropped (default: %(default)s)",
     )
-    parser.add_argument("--cuda", default=True, action="store_true", help="Use cuda")
+    parser.add_argument("--cuda", type=lambda x: str(x).lower() == 'true',
+                        default=True, help="Use cuda (default: %(default)s)")
     parser.add_argument(
         "--save", action="store_true", default=True, help="Save model to disk"
     )
@@ -135,13 +150,15 @@ def main(argv):
     # With this code for Apple Silicon support
     if args.cuda:
         if torch.cuda.is_available():
-            device = "cuda"
+            device = torch.device("cuda")
         elif torch.backends.mps.is_available():
-            device = "mps"
+            device = torch.device("mps")
         else:
-            device = "cpu"
+            device = torch.device("cpu")
     else:
-        device = "cpu"
+        device = torch.device("cpu")
+
+    print(f"Using device: {device}")
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -162,9 +179,9 @@ def main(argv):
     # net = ELIC(N=args.N, M=args.M)
     base_model = LightWeightCheckerboard(N=args.N, M=args.M)
     net = ResidualJPEGCompression(
-            base_model=base_model,
-            jpeg_quality=25
-        )
+        base_model=base_model,
+        jpeg_quality=args.jpeg_quality
+    )
     net = net.to(device)
     if not os.path.exists(args.savepath):
         try:
