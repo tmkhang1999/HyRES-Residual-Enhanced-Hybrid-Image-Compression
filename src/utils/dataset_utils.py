@@ -44,6 +44,27 @@ class ImageFolder(Dataset):
             img: `PIL.Image.Image` or transformed `PIL.Image.Image`.
         """
         img = Image.open(self.samples[index]).convert("RGB")
+
+        # Handle images smaller than crop size by resizing them
+        if self.transform and hasattr(self.transform, 'transforms'):
+            # Find crop transform and its size
+            crop_size = None
+            for t in self.transform.transforms:
+                if hasattr(t, 'size') and (
+                        t.__class__.__name__ == 'RandomCrop' or
+                        t.__class__.__name__ == 'CenterCrop'
+                ):
+                    crop_size = t.size if isinstance(t.size, tuple) else (t.size, t.size)
+                    break
+
+            # Resize if image is smaller than crop size
+            if crop_size and (img.width < crop_size[0] or img.height < crop_size[1]):
+                # Resize to slightly larger than crop size to maintain aspect ratio
+                scale = max(crop_size[0] / img.width, crop_size[1] / img.height)
+                new_width = int(img.width * scale)
+                new_height = int(img.height * scale)
+                img = img.resize((new_width, new_height), Image.BILINEAR)
+
         if self.transform:
             return self.transform(img)
         return img
