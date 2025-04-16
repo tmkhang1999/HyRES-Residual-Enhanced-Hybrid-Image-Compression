@@ -14,10 +14,9 @@ python -m src.training \
   --cuda True\
   --save \
   --seed 1926 \
-  --clip_max_norm 1.0 \
+  --clip_max_norm 1.0 > training.log 2>&1
 
 #  --pretrained \
 #  --checkpoint Pretrained4000epoch_checkpoint.pth.tar
 
-
-
+# tail -f training.log
