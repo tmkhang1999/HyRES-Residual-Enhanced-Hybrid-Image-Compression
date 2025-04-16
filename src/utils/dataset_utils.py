@@ -59,10 +59,10 @@ class ImageFolder(Dataset):
 
             # Resize if image is smaller than crop size
             if crop_size and (img.width < crop_size[0] or img.height < crop_size[1]):
-                # Resize to slightly larger than crop size to maintain aspect ratio
-                scale = max(crop_size[0] / img.width, crop_size[1] / img.height)
-                new_width = int(img.width * scale)
-                new_height = int(img.height * scale)
+                # Add a small buffer (1 pixel) to avoid rounding issues
+                scale = max(crop_size[0] / img.width, crop_size[1] / img.height) * 1.01
+                new_width = max(int(img.width * scale), crop_size[0])
+                new_height = max(int(img.height * scale), crop_size[1])
                 img = img.resize((new_width, new_height), Image.BILINEAR)
 
         if self.transform:
