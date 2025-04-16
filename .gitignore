@@ -169,7 +169,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-data
+data/train
 .idea
 .DS_Store
 models/pretrained/*
