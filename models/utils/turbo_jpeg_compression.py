@@ -9,7 +9,7 @@ class TurboJPEGCompression(nn.Module):
     def __init__(self, quality=25):
         super().__init__()
         self.quality = quality
-        self.jpeg = TurboJPEG()
+        self.jpeg = TurboJPEG(lib_path='/home/tm05393z/miniconda3/envs/myenv/lib/libturbojpeg.so')
         self.to_pil = transforms.ToPILImage()
         self.to_tensor = transforms.ToTensor()
         print(f"Using TurboJPEG compression with quality {quality}")
