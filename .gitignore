@@ -173,3 +173,4 @@ data/train
 .idea
 .DS_Store
 models/pretrained/*
+checkpoint
