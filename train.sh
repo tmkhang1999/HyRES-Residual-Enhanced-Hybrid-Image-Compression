@@ -6,17 +6,15 @@ python -m src.training \
   --patch-size 256 256 \
   --batch-size 16 \
   --test-batch-size 16 \
-  -e 2000 \
-  -lr 1e-4 \
+  -e 1000 \
+  -lr 2e-4 \
   --aux-learning-rate 1e-3 \
-  -n 8 \
+  -n 4 \
   --lambda 13e-3 \
   --cuda True\
   --save \
   --seed 1926 \
-  --clip_max_norm 1.0 > training.log 2>&1
+  --clip_max_norm 1.0
 
 #  --pretrained \
 #  --checkpoint Pretrained4000epoch_checkpoint.pth.tar
-
-# tail -f training.log
