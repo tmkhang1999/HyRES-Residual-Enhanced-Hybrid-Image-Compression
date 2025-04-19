@@ -54,7 +54,7 @@ class ImageFolder(Dataset):
                         t.__class__.__name__ == 'RandomCrop' or
                         t.__class__.__name__ == 'CenterCrop'
                 ):
-                    crop_size = t.size if isinstance(t.size, tuple) else (t.size, t.size)
+                    crop_size = tuple(t.size) if hasattr(t.size, '__iter__') else (t.size, t.size)
                     break
 
             # Resize if image is smaller than crop size
