@@ -1,10 +1,12 @@
 import time
 import torch
 from src.losses import AverageMeter
+from contextlib import nullcontext
 
 
 def train_one_epoch(
-        model, criterion, train_dataloader, optimizer, aux_optimizer, epoch, clip_max_norm, noisequant=True,
+        model, criterion, train_dataloader, optimizer, aux_optimizer, epoch, clip_max_norm,
+        noisequant=True, mixed_precision=False, gradient_accumulation_steps=1,
 ):
     model.train()
     device = next(model.parameters()).device
@@ -15,33 +17,60 @@ def train_one_epoch(
     train_mse_loss = AverageMeter()
     start = time.time()
 
+    # Initialize scaler for mixed precision
+    scaler = torch.cuda.amp.GradScaler() if mixed_precision else None
+
+    optimizer.zero_grad()
+    aux_optimizer.zero_grad()
+
     for i, d in enumerate(train_dataloader):
-        optimizer.zero_grad()
-        aux_optimizer.zero_grad()
-
         # Keep data on CPU for JPEG compression, then move to GPU for neural compression
-        out_net = model(d, noisequant)
+        # Process with mixed precision
+        with torch.cuda.amp.autocast() if mixed_precision else nullcontext():
+            out_net = model(d, noisequant)
 
-        # Move data to GPU after JPEG compression
-        d = d.to(device)
+            # Move data to GPU after JPEG compression
+            d = d.to(device)
 
-        out_criterion = criterion(out_net, d)
+            out_criterion = criterion(out_net, d)
+            loss = out_criterion["loss"] / gradient_accumulation_steps
+
+        # Accumulate metrics
         train_bpp_loss.update(out_criterion["bpp_loss"].item())
         train_y_bpp_loss.update(out_criterion["y_bpp_loss"].item())
         train_z_bpp_loss.update(out_criterion["z_bpp_loss"].item())
         train_loss.update(out_criterion["loss"].item())
         train_mse_loss.update(out_criterion["mse_loss"].item())
 
-        out_criterion["loss"].backward()
-        if clip_max_norm > 0:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_max_norm)
-        optimizer.step()
+        # Scale loss and backward pass with mixed precision
+        if mixed_precision:
+            scaler.scale(loss).backward()
+        else:
+            loss.backward()
 
-        aux_loss = model.aux_loss()
-        aux_loss.backward()
-        aux_optimizer.step()
+        # Perform optimization step after accumulating gradients
+        if (i + 1) % gradient_accumulation_steps == 0:
+            if clip_max_norm > 0:
+                if mixed_precision:
+                    scaler.unscale_(optimizer)
 
-        if i % 100 == 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), clip_max_norm)
+
+            if mixed_precision:
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                optimizer.step()
+
+            optimizer.zero_grad()
+
+            # Handle auxiliary optimizer separately without mixed precision
+            aux_loss = model.aux_loss()
+            aux_loss.backward()
+            aux_optimizer.step()
+            aux_optimizer.zero_grad()
+
+        if i % 1000 == 0:
             print(
                 f"Train epoch {epoch}: ["
                 f"{i * len(d)}/{len(train_dataloader.dataset)}"

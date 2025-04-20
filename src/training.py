@@ -117,6 +117,17 @@ def parse_args(argv):
         action="store_true",
         help="use the pretrain model to refine the models",
     )
+    parser.add_argument(
+        "--mixed-precision",
+        action="store_true",
+        help="Use mixed precision training",
+    )
+    parser.add_argument(
+        "--gradient-accumulation-steps",
+        type=int,
+        default=1,
+        help="Number of updates steps to accumulate before performing a backward/update pass",
+    )
     parser.add_argument('--gpu-id', default='0', type=str, help='id(s) for CUDA_VISIBLE_DEVICES')
     parser.add_argument('--savepath', default='./checkpoint', type=str, help='Path to save the checkpoint')
     parser.add_argument("--checkpoint", type=str, help="Path to a checkpoint")
@@ -193,7 +204,6 @@ def main(argv):
         net = CustomDataParallel(net)
 
     optimizer, aux_optimizer = configure_optimizers(net, args)
-    # lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min", factor=0.3, patience=8)
     lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3800], gamma=0.1)
     criterion = RateDistortionLoss(lmbda=args.lmbda)
 
@@ -232,7 +242,9 @@ def main(argv):
             aux_optimizer,
             epoch,
             args.clip_max_norm,
-            noisequant
+            noisequant,
+            args.mixed_precision,
+            args.gradient_accumulation_steps
         )
         writer.add_scalar('Train/loss', train_loss, epoch)
         writer.add_scalar('Train/mse', train_mse, epoch)
