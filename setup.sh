@@ -5,6 +5,11 @@
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh
 
+# Add conda to PATH
+export PATH="$HOME/miniconda3/bin:$PATH"
+source ~/.bashrc
+conda init
+
 # Exit immediately if a command exits with a non-zero status
 set -e
 
@@ -17,10 +22,12 @@ python -m pip install --upgrade pip
 
 # Install the required Python packages
 pip install -r requirements.txt
+conda install libjpeg-turbo
 
 ## Download and prepare the mini-imagenet dataset
 # Install kaggle CLI if not already installed
-pip install --user kaggle
+pip install kaggle
+export PATH=$PATH:~/.local/bin
 
 # Ensure kaggle directory exists
 mkdir -p ~/.kaggle
