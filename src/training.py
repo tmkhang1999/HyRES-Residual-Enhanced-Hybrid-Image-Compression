@@ -170,6 +170,7 @@ def main(argv):
         device = torch.device("cpu")
 
     print(f"Using device: {device}")
+    print("Lambda: ", args.lmbda)
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -204,7 +205,7 @@ def main(argv):
         net = CustomDataParallel(net)
 
     optimizer, aux_optimizer = configure_optimizers(net, args)
-    lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3800], gamma=0.1)
+    lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[800], gamma=0.1)
     criterion = RateDistortionLoss(lmbda=args.lmbda)
 
     last_epoch = 0
@@ -230,7 +231,7 @@ def main(argv):
     noisequant = True
     best_loss = float("inf")
     for epoch in range(last_epoch, args.epochs):
-        if epoch > 3800 or stemode:
+        if epoch > 800 or stemode:
             noisequant = False
         print("noisequant: {}, stemode:{}".format(noisequant, stemode))
         print(f"Learning rate: {optimizer.param_groups[0]['lr']}")
