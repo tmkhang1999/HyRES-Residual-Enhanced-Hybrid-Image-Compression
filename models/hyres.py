@@ -1,7 +1,7 @@
 import torch
 from compressai.models import CompressionModel
 
-from .elic import LightWeightELIC
+from .checkerboard import LightWeightCheckerboard
 from .utils.turbo_jpeg_compression import TurboJPEGCompression
 
 
@@ -14,7 +14,7 @@ class ResidualJPEGCompression(CompressionModel):
     def __init__(self, base_model=None, jpeg_quality=25, **kwargs):
         super().__init__()
         self.jpeg = TurboJPEGCompression(quality=jpeg_quality)
-        self.residual_model = base_model if base_model is not None else LightWeightELIC(**kwargs)
+        self.residual_model = base_model if base_model is not None else LightWeightCheckerboard(**kwargs)
 
     def forward(self, x, noisequant=False):
         """
@@ -125,7 +125,15 @@ class ResidualJPEGCompression(CompressionModel):
         return decompress_result
 
     def load_state_dict(self, state_dict, **kwargs):
-        self.residual_model.load_state_dict(state_dict)
+        residual_model_state_dict = {}
+
+        for key, value in state_dict.items():
+            if key.startswith('residual_model.'):
+                # Remove the 'residual_model.' prefix
+                new_key = key[len('residual_model.'):]
+                residual_model_state_dict[new_key] = value
+
+        self.residual_model.load_state_dict(residual_model_state_dict)
 
     @classmethod
     def from_state_dict(cls, state_dict):
@@ -137,7 +145,7 @@ class ResidualJPEGCompression(CompressionModel):
 
 if __name__ == "__main__":
     # Create a base TestModel
-    base_model = LightWeightELIC(N=192, M=320, num_slices=5)
+    base_model = LightWeightCheckerboard(N=192, M=320)
 
     # Create the residual compression model
     model = ResidualJPEGCompression(
