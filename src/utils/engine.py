@@ -22,6 +22,7 @@ def train_one_epoch(
 
     optimizer.zero_grad()
     aux_optimizer.zero_grad()
+    aux_loss = torch.tensor(0.0, device=device)
 
     for i, d in enumerate(train_dataloader):
         # Keep data on CPU for JPEG compression, then move to GPU for neural compression
@@ -70,7 +71,7 @@ def train_one_epoch(
             aux_optimizer.step()
             aux_optimizer.zero_grad()
 
-        if i % 1000 == 0:
+        if i % 100 == 0:
             print(
                 f"Train epoch {epoch}: ["
                 f"{i * len(d)}/{len(train_dataloader.dataset)}"
