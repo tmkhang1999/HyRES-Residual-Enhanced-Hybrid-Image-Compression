@@ -64,11 +64,17 @@ class TurboJPEGCompression(nn.Module):
         device = x.device
 
         # Process on CPU
-        compressed = self.compress(x)
+        compressed_buffers = self.compress(x)
+
+        # Calculate bits per pixel
+        N, _, H, W = x.size()
+        num_pixels = N * H * W
+        compressed_bits = sum(len(buffer.getvalue()) * 8 for buffer in compressed_buffers)
+        jpeg_bpp = compressed_bits / num_pixels
 
         # Return to original device
-        decompressed = self.decompress(compressed, device)
-        return decompressed
+        decompressed = self.decompress(compressed_buffers, device)
+        return decompressed, jpeg_bpp
 
 
 if __name__ == "__main__":
@@ -92,14 +98,15 @@ if __name__ == "__main__":
     # Decompress
     decompressed_tensor = jpeg_compressor.decompress(compressed_data, device=torch.device("cpu"))
     print(f"Decompressed tensor shape: {decompressed_tensor.shape}")
-    decompressed_image = transforms.ToPILImage()(decompressed_tensor[0])
-    decompressed_image.show()
+    # decompressed_image = transforms.ToPILImage()(decompressed_tensor[0])
+    # decompressed_image.show()
 
     # Show the residual map between original and decompressed image in tensor
-    # residual_map = image_tensor[0] - decompressed_tensor[0]
+    residual_map = image_tensor[0] - decompressed_tensor[0]
     # residual_map = transforms.ToPILImage()(residual_map.cpu())
     # residual_map.show()
 
-    # x_hat = decompressed_tensor[0] + residual_map
-    # x_hat = transforms.ToPILImage()(x_hat.cpu())
-    # x_hat.show()
+    x_hat = decompressed_tensor[0] + residual_map
+    # x_hat = torch.clamp(x_hat, 0, 1)
+    x_hat = transforms.ToPILImage()(x_hat.cpu())
+    x_hat.show()

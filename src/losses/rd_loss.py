@@ -17,10 +17,14 @@ class RateDistortionLoss(nn.Module):
         out = {}
         num_pixels = N * H * W
 
-        out["bpp_loss"] = sum(
+        out["residual_bpp_loss"] = sum(
             (torch.log(likelihoods).sum() / (-math.log(2) * num_pixels))
             for likelihoods in output["likelihoods"].values()
         )
+
+        # Total bpp is the sum of both components
+        out["bpp_loss"] = out["residual_bpp_loss"] + output["jpeg_bpp_loss"]
+
         out["y_bpp_loss"] = sum(
             (torch.log(likelihoods).sum() / (-math.log(2) * num_pixels))
             for likelihoods in output["likelihoods"]["y"]

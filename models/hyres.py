@@ -38,7 +38,7 @@ class ResidualJPEGCompression(CompressionModel):
             x_cpu = x
 
         # Perform JPEG compression/decompression on CPU
-        jpeg_decoded_cpu = self.jpeg(x_cpu)
+        jpeg_decoded_cpu, jpeg_bpp = self.jpeg(x_cpu)
 
         # Calculate residual on CPU
         residual_cpu = x_cpu - jpeg_decoded_cpu
@@ -56,14 +56,13 @@ class ResidualJPEGCompression(CompressionModel):
 
         # Final reconstruction on original device
         x_hat = jpeg_decoded + residual_hat
-
-        # Clamp to valid range
         x_hat = torch.clamp(x_hat, 0, 1)
 
         # Return results including likelihoods from residual model
         return {
             'x_hat': x_hat,
             'likelihoods': residual_results['likelihoods'],
+            'jpeg_bpp_loss': torch.tensor(jpeg_bpp, device=device),
             'jpeg_decoded': jpeg_decoded,
             'residual': residual,
             'residual_hat': residual_hat
