@@ -2,7 +2,7 @@
 
 ```angular2html
 HyRES-Residual-Enhanced-Hybrid-Image-Compression
-├── config
+├── checkpoints
 ├── data
 │   ├── train
 │   │   ├── img000.png
@@ -35,5 +35,7 @@ HyRES-Residual-Enhanced-Hybrid-Image-Compression
 ├── .gitignore                  # Git ignore file
 ├── LICENSE                     # Apache-2.0 license file
 ├── README.md                   # Project overview and instructions
-└── requirements.txt            # Python dependencies for the project
+├── requirements.txt            # Python dependencies for the project
+├── setup.sh                    # Shell script for setting up the environment
+└── train.sh                    # Shell script for training the model
 ```
