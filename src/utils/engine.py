@@ -54,8 +54,21 @@ def train_one_epoch(
             if clip_max_norm > 0:
                 if mixed_precision:
                     scaler.unscale_(optimizer)
+                    # Check for NaN gradients and skip step if found
+                    skip_step = False
+                    for param in model.parameters():
+                        if param.grad is not None and torch.isnan(param.grad).any():
+                            skip_step = True
+                            break
 
-                torch.nn.utils.clip_grad_norm_(model.parameters(), clip_max_norm)
+                    if not skip_step:
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), clip_max_norm)
+                    else:
+                        print(f"Warning: NaN gradients detected, skipping update step")
+                        optimizer.zero_grad()
+                        continue
+                else:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), clip_max_norm)
 
             if mixed_precision:
                 scaler.step(optimizer)
