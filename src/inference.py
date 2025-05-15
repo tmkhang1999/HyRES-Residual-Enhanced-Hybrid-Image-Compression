@@ -19,8 +19,7 @@ from PIL import Image
 from compressai.zoo import load_state_dict
 from pytorch_msssim import ms_ssim
 from torchvision import transforms
-
-from ..models import LightWeightELIC, ResidualJPEGCompression
+from models import ResidualJPEGCompression, LightWeightCheckerboard
 
 torch.backends.cudnn.deterministic = True
 torch.set_num_threads(1)
@@ -66,7 +65,8 @@ def inference(model, x, f, outputpath, patch):
     imgPath = '/'.join(imgpath)
     csvfile = '/'.join(imgpath[:-1]) + '/result.csv'
     print('decoding img: {}'.format(f))
-    ########original padding
+
+    # Padding
     h, w = x.size(2), x.size(3)
     p = patch  # maximum 6 strides of 2
     new_h = (h + p - 1) // p * p
@@ -79,49 +79,83 @@ def inference(model, x, f, outputpath, patch):
     x_padded = pad(x)
 
     _, _, height, width = x_padded.size()
+
+    # Compression
     start = time.time()
     out_enc = model.compress(x_padded)
     enc_time = time.time() - start
 
+    # Decompression
     start = time.time()
-    out_dec = model.decompress(out_enc["strings"], out_enc["shape"])
+    out_dec = model.decompress(out_enc)
     dec_time = time.time() - start
 
+    # Remove padding
     out_dec["x_hat"] = torch.nn.functional.pad(
         out_dec["x_hat"], (-padding_left, -padding_right, -padding_top, -padding_bottom)
     )
 
+    # Calculate bits per pixel
     num_pixels = x.size(0) * x.size(2) * x.size(3)
     bpp = 0
-    for s in out_enc["strings"]:
-        for j in s:
-            if isinstance(j, list):
-                for i in j:
-                    if isinstance(i, list):
-                        for k in i:
-                            bpp += len(k)
-                    else:
-                        bpp += len(i)
-            else:
-                bpp += len(j)
+
+    # Handle structured strings from checkerboard model
+    for string_list in out_enc["strings"][0]:  # First element is y strings (anchor + non-anchor)
+        for s in string_list:  # Each string_list has anchor strings and non-anchor strings
+            bpp += len(s)
+
+    # Add z strings
+    for s in out_enc["strings"][1]:  # Second element is z strings
+        bpp += len(s)
+
     bpp *= 8.0 / num_pixels
-    # bpp = sum(len(s[0]) for s in out_enc["strings"]) * 8.0 / num_pixels
-    z_bpp = len(out_enc["strings"][1][0]) * 8.0 / num_pixels
+
+    # Calculate anchor/non-anchor bpp portions (if needed)
+    z_bpp = sum(len(s) for s in out_enc["strings"][1]) * 8.0 / num_pixels
     y_bpp = bpp - z_bpp
 
+    # Save reconstructed image
     torchvision.utils.save_image(out_dec["x_hat"], imgPath, nrow=1)
+
+    # Calculate quality metrics
+    mse = torch.nn.functional.mse_loss(x, out_dec["x_hat"]).item()
+    mse_db = mse * 255 ** 2
     PSNR = psnr(x, out_dec["x_hat"])
+    msssim = ms_ssim(x, out_dec["x_hat"], data_range=1.0).item()
+
+    # Write results to CSV
     with open(csvfile, 'a+') as f:
         row = [imgpath[-1], bpp * num_pixels, num_pixels, bpp, y_bpp, z_bpp,
-               torch.nn.functional.mse_loss(x, out_dec["x_hat"]).item() * 255 ** 2, psnr(x, out_dec["x_hat"]),
-               ms_ssim(x, out_dec["x_hat"], data_range=1.0).item(), enc_time, dec_time, out_enc["time"]['y_enc'] * 1000,
-               out_dec["time"]['y_dec'] * 1000, out_enc["time"]['z_enc'] * 1000, out_enc["time"]['z_dec'] * 1000,
-               out_enc["time"]['params'] * 1000]
+               mse_db, PSNR, msssim,
+               enc_time, dec_time]
+
+        # Add detailed timing - handle both dictionary and float time values
+        if "time" in out_enc:
+            if isinstance(out_enc["time"], dict):
+                # ELIC style - dictionary with detailed timings
+                row.extend([
+                    out_enc["time"].get('y_enc', 0) * 1000,
+                    out_dec["time"].get('y_dec', 0) * 1000 if "time" in out_dec else 0,
+                    out_enc["time"].get('z_enc', 0) * 1000,
+                    out_enc["time"].get('z_dec', 0) * 1000,
+                    out_enc["time"].get('params', 0) * 1000
+                ])
+            else:
+                # Checkerboard style - just total compression time
+                total_time = out_enc["time"] * 1000
+                row.extend([total_time / 2, total_time / 2, 0, 0, 0])
+        else:
+            row.extend([0, 0, 0, 0, 0])  # Add zeros if time not available
+
         write = csv.writer(f)
         write.writerow(row)
-    print('bpp:{}, PSNR: {}, encoding time: {}, decoding time: {}'.format(bpp, PSNR, enc_time, dec_time))
+
+    print(f'bpp: {bpp:.4f}, MSE: {mse_db:.4f}, PSNR: {PSNR:.4f}, MS-SSIM: {msssim:.4f}, encoding time: {enc_time:.4f}s, decoding time: {dec_time:.4f}s')
+
     return {
         "psnr": PSNR,
+        "mse": mse_db,
+        "msssim": msssim,
         "bpp": bpp,
         "encoding_time": enc_time,
         "decoding_time": dec_time,
@@ -136,48 +170,68 @@ def inference_entropy_estimation(model, x, f, outputpath, patch):
     imgPath = '/'.join(imgpath)
     csvfile = '/'.join(imgpath[:-1]) + '/result.csv'
     print('decoding img: {}'.format(f))
-    ########original padding
+
+    # Padding
     h, w = x.size(2), x.size(3)
     p = patch  # maximum 6 strides of 2
     new_h = (h + p - 1) // p * p
     new_w = (w + p - 1) // p * p
-    padding_left = (new_w - w) // 2
+    padding_left = 0
     padding_right = new_w - w - padding_left
-    padding_top = (new_h - h) // 2
+    padding_top = 0
     padding_bottom = new_h - h - padding_top
-    x_padded = torch.nn.functional.pad(
-        x,
-        (padding_left, padding_right, padding_top, padding_bottom),
-        mode="constant",
-        value=0,
-    )
-    _, _, height, width = x_padded.size()
+    pad = nn.ConstantPad2d((padding_left, padding_right, padding_top, padding_bottom), 0)
+    x_padded = pad(x)
 
+    # Inference with entropy estimation (no actual coding)
     start = time.time()
     out_net = model.inference(x_padded)
-
     elapsed_time = time.time() - start
+
+    # Remove padding
     out_net["x_hat"] = torch.nn.functional.pad(
         out_net["x_hat"], (-padding_left, -padding_right, -padding_top, -padding_bottom)
     )
+
+    # Calculate bits per pixel
     num_pixels = x.size(0) * x.size(2) * x.size(3)
     bpp = sum(
         (torch.log(likelihoods).sum() / (-math.log(2) * num_pixels))
         for likelihoods in out_net["likelihoods"].values()
-    )
-    y_bpp = (torch.log(out_net["likelihoods"]["y"]).sum() / (-math.log(2) * num_pixels))
-    z_bpp = (torch.log(out_net["likelihoods"]["y"]).sum() / (-math.log(2) * num_pixels))
+    )  # Missing closing parenthesis was here
 
+    # Split bpp between y and z
+    y_bpp = (torch.log(out_net["likelihoods"]["y"]).sum() / (-math.log(2) * num_pixels))
+    z_bpp = (torch.log(out_net["likelihoods"]["z"]).sum() / (-math.log(2) * num_pixels))
+
+    # Save reconstructed image
     torchvision.utils.save_image(out_net["x_hat"], imgPath, nrow=1)
+
+    # Calculate quality metrics
     PSNR = psnr(x, out_net["x_hat"])
+
+    # Write results to CSV
     with open(csvfile, 'a+') as f:
         row = [imgpath[-1], bpp.item() * num_pixels, num_pixels, bpp.item(), y_bpp.item(), z_bpp.item(),
                torch.nn.functional.mse_loss(x, out_net["x_hat"]).item() * 255 ** 2, PSNR,
-               ms_ssim(x, out_net["x_hat"], data_range=1.0).item(), elapsed_time / 2.0, elapsed_time / 2.0,
-               out_net["time"]['y_enc'] * 1000, out_net["time"]['y_dec'] * 1000, out_net["time"]['z_enc'] * 1000,
-               out_net["time"]['z_dec'] * 1000, out_net["time"]['params'] * 1000]
+               ms_ssim(x, out_net["x_hat"], data_range=1.0).item(),
+               elapsed_time / 2.0, elapsed_time / 2.0]
+
+        # Add detailed timing if available
+        if "time" in out_net:
+            row.extend([
+                out_net["time"].get('y_enc', 0) * 1000,
+                out_net["time"].get('y_dec', 0) * 1000,
+                out_net["time"].get('z_enc', 0) * 1000,
+                out_net["time"].get('z_dec', 0) * 1000,
+                out_net["time"].get('params', 0) * 1000
+            ])
+        else:
+            row.extend([0, 0, 0, 0, 0])  # Add zeros if detailed timing not available
+
         write = csv.writer(f)
         write.writerow(row)
+
     return {
         "psnr": PSNR,
         "bpp": bpp.item(),
@@ -186,23 +240,28 @@ def inference_entropy_estimation(model, x, f, outputpath, patch):
     }
 
 
-def eval_model(model, filepaths, entropy_estimation=False, half=False, outputpath='Recon', patch=576):
+def eval_model(model, filepaths, entropy_estimation=False, half=False, outputpath='Recon', patch=256):
     device = next(model.parameters()).device
     metrics = defaultdict(float)
+
+    # Create output directory
     imgdir = filepaths[0].split('/')
     imgdir[-2] = outputpath
     imgDir = '/'.join(imgdir[:-1])
     if not os.path.isdir(imgDir):
         os.makedirs(imgDir)
+
+    # Create/reset CSV file
     csvfile = imgDir + '/result.csv'
     if os.path.isfile(csvfile):
         os.remove(csvfile)
     with open(csvfile, 'w') as f:
         row = ['name', 'bits', 'pixels', 'bpp', 'y_bpp', 'z_bpp', 'mse', 'psnr(dB)', 'ms-ssim', 'enc_time(s)',
-               'dec_time(s)', 'y_enc(ms)',
-               'y_dec(ms)', 'z_enc(ms)', 'z_dec(ms)', 'param(ms)']
+               'dec_time(s)', 'y_enc(ms)', 'y_dec(ms)', 'z_enc(ms)', 'z_dec(ms)', 'param(ms)']
         write = csv.writer(f)
         write.writerow(row)
+
+    # Process each image
     for f in filepaths:
         x = read_image(f).to(device)
         if not entropy_estimation:
@@ -214,8 +273,11 @@ def eval_model(model, filepaths, entropy_estimation=False, half=False, outputpat
             rv = inference_entropy_estimation(model, x, f, outputpath, patch)
         for k, v in rv.items():
             metrics[k] += v
+
+    # Calculate average metrics
     for k, v in metrics.items():
         metrics[k] = v / len(filepaths)
+
     return metrics
 
 
@@ -266,6 +328,14 @@ def setup_args():
         default=256,
         help="padding patch size (default: %(default)s)",
     )
+    parser.add_argument("--N", type=int, default=128, help="Number of channels")
+    parser.add_argument("--M", type=int, default=192, help="Number of latent channels")
+    parser.add_argument(
+        "--jpeg-quality",
+        default=1,
+        type=int,
+        help="JPEG quality factor (default: %(default)s)",
+    )
     return parser
 
 
@@ -282,12 +352,12 @@ def main(argv):
     compressai.set_entropy_coder(args.entropy_coder)
 
     state_dict = load_state_dict(torch.load(args.paths))
-    base_model = LightWeightELIC()
+    base_model = LightWeightCheckerboard(N=args.N, M=args.M)
     model_cls = ResidualJPEGCompression(
         base_model=base_model,
-        jpeg_quality=25
+        jpeg_quality=args.jpeg_quality,
     )
-    model = model_cls.from_state_dict(state_dict).eval()
+    model = model_cls.from_state_dict(state_dict, jpeg_quality=args.jpeg_quality).eval()
 
     results = defaultdict(list)
 
