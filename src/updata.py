@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import torch
-from ..models import LightWeightELIC, ResidualJPEGCompression
+from models import ResidualJPEGCompression, LightWeightCheckerboard
 from .utils import load_checkpoint
 import os
 
@@ -12,7 +12,7 @@ import os
 def setup_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "filepath", type=str, help="Path to the checkpoint model to be exported."
+        "--filepath", type=str, help="Path to the checkpoint model to be exported."
     )
     parser.add_argument("-n", "--name", type=str, help="Exported model name.")
     parser.add_argument("-d", "--dir", type=str, help="Exported model directory.")
@@ -21,6 +21,14 @@ def setup_args():
         action="store_true",
         default=False,
         help="Do not update the model CDFs parameters.",
+    )
+    parser.add_argument("--N", type=int, default=128, help="Number of channels")
+    parser.add_argument("--M", type=int, default=192, help="Number of latent channels")
+    parser.add_argument(
+        "--jpeg-quality",
+        default=1,
+        type=int,
+        help="JPEG quality factor (default: %(default)s)",
     )
     return parser
 
@@ -34,15 +42,16 @@ def main(argv):
 
     state_dict = load_checkpoint(filepath)
 
-    base_model = LightWeightELIC()
+    base_model = LightWeightCheckerboard(N=args.N, M=args.M)
     model_cls = ResidualJPEGCompression(
         base_model=base_model,
-        jpeg_quality=25
+        jpeg_quality=args.jpeg_quality
     )
     net = model_cls.from_state_dict(state_dict)
 
     if not args.no_update:
         net.update(force=True)
+        print("Updated the model CDFs parameters.")
     state_dict = net.state_dict()
 
     if not args.name:

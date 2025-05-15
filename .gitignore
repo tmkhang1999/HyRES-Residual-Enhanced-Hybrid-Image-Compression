@@ -174,3 +174,4 @@ data/train
 .DS_Store
 models/pretrained/*
 checkpoint
+test.py
