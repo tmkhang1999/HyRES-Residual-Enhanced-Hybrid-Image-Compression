@@ -22,7 +22,7 @@ def get_scale_table(min=SCALES_MIN, max=SCALES_MAX, levels=SCALES_LEVELS):
 
 
 class LightWeightCheckerboard(CompressionModel):
-    def __init__(self, N=192, M=320):
+    def __init__(self, N=128, M=192):
         super().__init__()
         self.N, self.M = N, M
 
