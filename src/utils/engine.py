@@ -1,5 +1,6 @@
 import time
 import torch
+import os
 from src.losses import AverageMeter
 from contextlib import nullcontext
 
@@ -15,6 +16,7 @@ def train_one_epoch(
     train_y_bpp_loss = AverageMeter()
     train_z_bpp_loss = AverageMeter()
     train_mse_loss = AverageMeter()
+    train_vgg_loss = AverageMeter()
     start = time.time()
 
     # Initialize scaler for mixed precision
@@ -42,6 +44,7 @@ def train_one_epoch(
         train_z_bpp_loss.update(out_criterion["z_bpp_loss"].item())
         train_loss.update(out_criterion["loss"].item())
         train_mse_loss.update(out_criterion["mse_loss"].item())
+        train_vgg_loss.update(out_criterion["vgg_loss"].item())
 
         # Scale loss and backward pass with mixed precision
         if mixed_precision:
@@ -66,6 +69,8 @@ def train_one_epoch(
                     else:
                         print(f"Warning: NaN gradients detected, skipping update step")
                         optimizer.zero_grad()
+                        if scaler is not None:
+                            scaler.update()
                         continue
                 else:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), clip_max_norm)
@@ -91,7 +96,9 @@ def train_one_epoch(
                 f" ({100. * i / len(train_dataloader):.0f}%)]"
                 f'\tLoss: {out_criterion["loss"].item():.3f} |'
                 f'\tMSE loss: {out_criterion["mse_loss"].item():.3f} |'
+                f'\tVGG loss: {out_criterion["vgg_loss"].item():.3f} |'
                 f'\tBpp loss: {out_criterion["bpp_loss"].item():.3f} |'
+                f'\tResidual Bpp: {out_criterion["residual_bpp_loss"].item():.3f} |'
                 f'\ty_Bpp loss: {out_criterion["y_bpp_loss"].item():.4f} |'
                 f'\tz_Bpp loss: {out_criterion["z_bpp_loss"].item():.4f} |'
                 f"\tAux loss: {aux_loss.item():.2f}"
@@ -99,6 +106,7 @@ def train_one_epoch(
     print(f"Train epoch {epoch}: Average losses:"
           f"\tLoss: {train_loss.avg:.3f} |"
           f"\tMSE loss: {train_mse_loss.avg:.3f} |"
+          f"\tVGG loss: {train_vgg_loss.avg:.3f} |"
           f"\tBpp loss: {train_bpp_loss.avg:.4f} |"
           f"\ty_Bpp loss: {train_y_bpp_loss.avg:.5f} |"
           f"\tz_Bpp loss: {train_z_bpp_loss.avg:.5f} |"
@@ -108,7 +116,7 @@ def train_one_epoch(
     return train_loss.avg, train_bpp_loss.avg, train_mse_loss.avg
 
 
-def test_epoch(epoch, test_dataloader, model, criterion):
+def test_epoch(epoch, test_dataloader, model, criterion, save_images=False, savepath=None):
     model.eval()
     device = next(model.parameters()).device
 
@@ -117,12 +125,25 @@ def test_epoch(epoch, test_dataloader, model, criterion):
     y_bpp_loss = AverageMeter()
     z_bpp_loss = AverageMeter()
     mse_loss = AverageMeter()
+    vgg_loss = AverageMeter()
     aux_loss = AverageMeter()
 
+    # Set up directory for reconstructed images
+    recon_dir = os.path.join(savepath, "best_recon") if save_images else None
+    if save_images and os.path.exists(recon_dir):
+        # Remove existing images to save only the latest best ones
+        import shutil
+        shutil.rmtree(recon_dir)
+    if save_images:
+        os.makedirs(recon_dir)
+
     with torch.no_grad():
-        for d in test_dataloader:
-            d = d.to(device)
+        for i, d in enumerate(test_dataloader):
+            # Process with the HyRes model's expected data flow
             out_net = model(d)
+
+            # Move data to device for criterion calculation
+            d = d.to(device)
             out_criterion = criterion(out_net, d)
 
             aux_loss.update(model.aux_loss().item())
@@ -131,15 +152,48 @@ def test_epoch(epoch, test_dataloader, model, criterion):
             z_bpp_loss.update(out_criterion["z_bpp_loss"].item())
             loss.update(out_criterion["loss"].item())
             mse_loss.update(out_criterion["mse_loss"].item())
+            vgg_loss.update(out_criterion["vgg_loss"].item())
+
+            # Save reconstructed images if requested (only for the latest best epoch)
+            if save_images and i < 5:  # Limit to first 20 images
+                from torchvision.utils import save_image
+
+                # Save reconstructed image
+                img_path = os.path.join(recon_dir, f"recon_{i}.png")
+                save_image(out_net["x_hat"], img_path)
+
+                # For HyRes model, save component images too
+                if "jpeg_decoded" in out_net and "residual_hat" in out_net:
+                    jpeg_path = os.path.join(recon_dir, f"jpeg_{i}.png")
+                    save_image(out_net["jpeg_decoded"], jpeg_path)
+
+                    residual_path = os.path.join(recon_dir, f"residual_{i}.png")
+                    # Normalize residual for better visualization (centered at 0.5)
+                    residual_vis = out_net["residual"] * 0.5 + 0.5
+                    save_image(residual_vis, residual_path)
+
+                    residual_hat_path = os.path.join(recon_dir, f"residual_hat_{i}.png")
+                    residual_hat_vis = out_net["residual_hat"] * 0.5 + 0.5
+                    save_image(residual_hat_vis, residual_hat_path)
 
     print(
         f"Test epoch {epoch}: Average losses:"
         f"\tLoss: {loss.avg:.3f} |"
         f"\tMSE loss: {mse_loss.avg:.3f} |"
+        f"\tVGG loss: {vgg_loss.avg:.3f} |"
         f"\tBpp loss: {bpp_loss.avg:.4f} |"
         f"\ty_Bpp loss: {y_bpp_loss.avg:.4f} |"
         f"\tz_Bpp loss: {z_bpp_loss.avg:.4f} |"
         f"\tAux loss: {aux_loss.avg:.4f}\n"
     )
+
+    # Save metrics to CSV if requested (overwriting previous best)
+    if save_images:
+        import csv
+        csv_path = os.path.join(savepath, "best_metrics.csv")
+        with open(csv_path, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(['epoch', 'loss', 'mse_loss', 'vgg_loss', 'bpp_loss', 'y_bpp_loss', 'z_bpp_loss', 'aux_loss'])
+            writer.writerow([epoch, loss.avg, mse_loss.avg, vgg_loss.avg, bpp_loss.avg, y_bpp_loss.avg, z_bpp_loss.avg, aux_loss.avg])
 
     return loss.avg, bpp_loss.avg, mse_loss.avg

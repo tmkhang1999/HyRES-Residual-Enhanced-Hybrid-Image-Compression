@@ -44,7 +44,7 @@ def parse_args(argv):
     )
     parser.add_argument(
         "--jpeg-quality",
-        default=10,
+        default=1,
         type=int,
         help="JPEG quality factor (default: %(default)s)",
     )
@@ -75,6 +75,13 @@ def parse_args(argv):
         type=float,
         default=15e-3,
         help="Bit-rate distortion parameter (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--alpha",
+        dest="alpha",
+        type=float,
+        default=0.001,
+        help="Perceptual level parameter (VGG loss) (default: %(default)s)",
     )
     parser.add_argument(
         "--batch-size", type=int, default=16, help="Batch size (default: %(default)s)"
@@ -206,27 +213,27 @@ def main(argv):
 
     optimizer, aux_optimizer = configure_optimizers(net, args)
     lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[800], gamma=0.1)
-    criterion = RateDistortionLoss(lmbda=args.lmbda)
+    criterion = RateDistortionLoss(lmbda=args.lmbda, alpha=args.alpha)
 
     last_epoch = 0
     if args.checkpoint:  # load from previous checkpoint
         print("Loading", args.checkpoint)
         checkpoint = torch.load(args.checkpoint, map_location=device)
-        last_epoch = checkpoint["epoch"] + 1
         net.load_state_dict(checkpoint["state_dict"])
+        last_epoch = checkpoint["epoch"] + 1
         optimizer.load_state_dict(checkpoint["optimizer"])
         aux_optimizer.load_state_dict(checkpoint["aux_optimizer"])
         lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
 
-    stemode = False  ##set the pretrained flag
+    stemode = False
     if args.checkpoint and args.pretrained:
+        stemode = True
+        last_epoch = 0
         optimizer.param_groups[0]['lr'] = args.learning_rate
         aux_optimizer.param_groups[0]['lr'] = args.aux_learning_rate
         del lr_scheduler
         # lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100], gamma=0.1)
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min", factor=0.1, patience=10)
-        last_epoch = 0
-        stemode = True
 
     noisequant = True
     best_loss = float("inf")
@@ -258,7 +265,6 @@ def main(argv):
         lr_scheduler.step(loss)
 
         is_best = loss < best_loss
-        best_loss = min(loss, best_loss)
 
         if args.save:
             DelfileList(args.savepath, "checkpoint_last")
@@ -274,6 +280,19 @@ def main(argv):
                 filename=os.path.join(args.savepath, "checkpoint_last_{}.pth.tar".format(epoch))
             )
             if is_best:
+                best_loss = loss
+
+                print(f"New best model found at epoch {epoch}! Saving reconstructions and metrics.")
+                # Rerun test_epoch to save reconstructions for the best model
+                _, _, _ = test_epoch(
+                    epoch,
+                    test_dataloader,
+                    net,
+                    criterion,
+                    save_images=True,
+                    savepath=args.savepath
+                )
+
                 DelfileList(args.savepath, "checkpoint_best")
                 save_checkpoint(
                     {
