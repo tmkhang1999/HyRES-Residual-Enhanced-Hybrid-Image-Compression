@@ -11,7 +11,7 @@ class ResidualJPEGCompression(CompressionModel):
     Optimized for CPU→CPU→GPU data flow.
     """
 
-    def __init__(self, base_model=None, jpeg_quality=25, **kwargs):
+    def __init__(self, base_model=None, jpeg_quality=1, **kwargs):
         super().__init__()
         self.jpeg = TurboJPEGCompression(quality=jpeg_quality)
         self.residual_model = base_model if base_model is not None else LightWeightCheckerboard(**kwargs)
@@ -93,7 +93,7 @@ class ResidualJPEGCompression(CompressionModel):
         residual_compressed['jpeg_buffers'] = jpeg_buffers
         return residual_compressed
 
-    def decompress(self, compressed_representation):
+    def decompress(self, compressed_data):
         """
         Decompress the input representation.
 
@@ -104,9 +104,9 @@ class ResidualJPEGCompression(CompressionModel):
             torch.Tensor: Reconstructed image tensor
         """
         # Extract components
-        jpeg_buffers = compressed_representation['jpeg_buffers']
-        strings = compressed_representation['strings']
-        shape = compressed_representation['shape']
+        jpeg_buffers = compressed_data['jpeg_buffers']
+        strings = compressed_data['strings']
+        shape = compressed_data['shape']
 
         # JPEG decompression
         device = next(self.parameters()).device
@@ -135,11 +135,18 @@ class ResidualJPEGCompression(CompressionModel):
         self.residual_model.load_state_dict(residual_model_state_dict)
 
     @classmethod
-    def from_state_dict(cls, state_dict):
-        """Return a new model instance from `state_dict`."""
-        net = cls()
+    def from_state_dict(cls, state_dict, jpeg_quality=None):
+        """Return a new model instance from `state_dict` with optional quality override."""
+        kwargs = {}
+        if jpeg_quality is not None:
+            kwargs['jpeg_quality'] = jpeg_quality
+        net = cls(**kwargs)
         net.load_state_dict(state_dict)
         return net
+
+    def update(self, scale_table=None, force=False, **kwargs):
+        """Update the entropy bottleneck CDFs."""
+        return self.residual_model.update(scale_table=scale_table, force=force, **kwargs)
 
 
 if __name__ == "__main__":
