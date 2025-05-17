@@ -41,8 +41,8 @@ class VGGLoss(nn.Module):
         """
         Compute VGG perceptual loss between original and reconstructed images.
         Args:
-            x: Original image tensor [B,3,H,W] in range [0,1]
-            y: Reconstructed image tensor [B,3,H,W] in range [0,1]
+            x: Reconstructed image tensor [B,3,H,W] in range [0,1]
+            y: Original image tensor [B,3,H,W] in range [0,1]
         Returns:
             Total perceptual loss (weighted sum of L1 distances between feature maps)
         """
@@ -52,7 +52,9 @@ class VGGLoss(nn.Module):
 
         # Compute feature maps and L1 distances
         loss = 0
+        device = x.device
         for slice in self.slices:
+            slice = slice.to(device)
             x = slice(x)
             y = slice(y)
             loss += torch.abs(x - y).mean()
