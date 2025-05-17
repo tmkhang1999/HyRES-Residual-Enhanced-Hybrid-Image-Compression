@@ -178,6 +178,7 @@ def main(argv):
 
     print(f"Using device: {device}")
     print("Lambda: ", args.lmbda)
+    print("Alpha: ", args.alpha)
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -195,7 +196,6 @@ def main(argv):
         pin_memory=False,  # Changed from (device == "cuda") to False to keep tensors on CPU
     )
 
-    # net = ELIC(N=args.N, M=args.M)
     base_model = LightWeightCheckerboard(N=args.N, M=args.M)
     net = ResidualJPEGCompression(
         base_model=base_model,
@@ -212,7 +212,7 @@ def main(argv):
         net = CustomDataParallel(net)
 
     optimizer, aux_optimizer = configure_optimizers(net, args)
-    lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[800], gamma=0.1)
+    lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[400], gamma=0.1)
     criterion = RateDistortionLoss(lmbda=args.lmbda, alpha=args.alpha)
 
     last_epoch = 0
@@ -238,7 +238,7 @@ def main(argv):
     noisequant = True
     best_loss = float("inf")
     for epoch in range(last_epoch, args.epochs):
-        if epoch > 800 or stemode:
+        if epoch > 400 or stemode:
             noisequant = False
         print("noisequant: {}, stemode:{}".format(noisequant, stemode))
         print(f"Learning rate: {optimizer.param_groups[0]['lr']}")

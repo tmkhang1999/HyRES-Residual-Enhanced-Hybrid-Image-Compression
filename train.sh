@@ -7,28 +7,17 @@ python -m src.training \
   --batch-size 16 \
   --test-batch-size 16 \
   -e 1000 \
-  -lr 5e-4 \
-  --aux-learning-rate 5e-4 \
+  -lr 3e-4 \
+  --aux-learning-rate 3e-4 \
   -n 4 \
   --lambda 0.032 \
+  --alpha 0\
   --cuda True\
   --save \
   --seed 1926 \
   --clip_max_norm 1.0 \
   --mixed-precision \
   --gradient-accumulation-steps 2 \
+  --pretrained \
+  --checkpoint ./checkpoint/checkpoint_base.pth.tar \
   --savepath ./checkpoint/phase1 \
-  | tee -a training.log
-
-#  --pretrained \
-#  --checkpoint Pretrained4000epoch_checkpoint.pth.tar
-
-## Phase 1: mae_loss
-# 5e-4
-# 0.032
-
-## Phase 2: bpp_loss (reduce 0.19 + 0.2 -> 0.4)
-# 5e-4
-# 0.016
-
-
