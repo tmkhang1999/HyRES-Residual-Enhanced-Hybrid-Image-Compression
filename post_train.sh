@@ -1,0 +1,16 @@
+python -m src.enhancement_training \
+  --dataset ./data \
+  --N 128 \
+  --M 192 \
+  --jpeg-quality 1 \
+  --se-reduction 1 \
+  --batch-size 16 \
+  --test-batch-size 16 \
+  --patch-size 256 256 \
+  --num-workers 4 \
+  --epochs 100 \
+  --learning-rate 1e-4 \
+  --checkpoint ./checkpoint/phase1/checkpoint_best_loss_XXX.pth.tar \
+  --savepath ./checkpoint/enhancement \
+  --cuda True \
+  --seed 1926

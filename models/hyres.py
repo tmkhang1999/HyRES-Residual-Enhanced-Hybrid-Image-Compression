@@ -1,11 +1,9 @@
 import torch
-import torch.nn as nn
 from compressai.models import CompressionModel
 
 from .checkerboard import LightWeightCheckerboard
 from .utils.turbo_jpeg_compression import TurboJPEGCompression
-from .layers.squeeze_excitation import SEBlock
-
+from .layers.enhancement import MultiScaleRefine
 
 
 class ResidualJPEGCompression(CompressionModel):
@@ -14,22 +12,13 @@ class ResidualJPEGCompression(CompressionModel):
     Optimized for CPU→CPU→GPU data flow.
     """
 
-    def __init__(self, base_model=None, jpeg_quality=1, se_reduction=16, **kwargs):
+    def __init__(self, base_model=None, jpeg_quality=1, se_reduction=1, **kwargs):
         super().__init__()
         self.jpeg = TurboJPEGCompression(quality=jpeg_quality)
         self.residual_model = base_model if base_model is not None else LightWeightCheckerboard(**kwargs)
 
-        # Add SE block to reduce JPEG blocking artifacts
-        self.se_block = SEBlock(channel=3, reduction=se_reduction)
-
-        # Convolutional refinement layers to further reduce blocking artifacts
-        self.refine = nn.Sequential(
-            nn.Conv2d(3, 16, kernel_size=3, padding=1),
-            nn.PReLU(),
-            nn.Conv2d(16, 16, kernel_size=3, padding=1),
-            nn.PReLU(),
-            nn.Conv2d(16, 3, kernel_size=3, padding=1)
-        )
+        # Add refinement layers to reduce JPEG blocking artifacts
+        self.refine = MultiScaleRefine(in_channels=3, mid_channels=64)
 
     def forward(self, x, noisequant=False):
         """
@@ -72,15 +61,10 @@ class ResidualJPEGCompression(CompressionModel):
         # Initial reconstruction
         x_hat_initial = jpeg_decoded + residual_hat
 
-        # Apply SE block to reduce blocking artifacts
-        x_hat_se = self.se_block(x_hat_initial)
-
         # Apply refinement convolutions for further artifact removal
-        refinement = self.refine(x_hat_se)
-
-        # Final reconstruction with artifact reduction
-        x_hat = x_hat_se + refinement
-        x_hat = torch.clamp(x_hat, 0, 1)
+        refined = self.refine(x_hat_initial)
+        x_hat = x_hat_initial + refined
+        x_hat = torch.clamp(x_hat, 0, 1)  # Ensure output is in valid range
 
         # Return results including likelihoods from residual model
         return {
@@ -142,12 +126,9 @@ class ResidualJPEGCompression(CompressionModel):
         # Initial reconstruction
         x_hat_initial = jpeg_decoded + decompress_result["x_hat"]
 
-        # Apply SE block and refinement for artifact reduction
-        x_hat_se = self.se_block(x_hat_initial)
-        refinement = self.refine(x_hat_se)
-        x_hat = x_hat_se + refinement
-
-        # Clamp to valid range
+        # Apply refinement convolutions for further artifact removal
+        refined = self.refine(x_hat_initial)
+        x_hat = x_hat_initial + refined
         x_hat = torch.clamp(x_hat, 0, 1)
         decompress_result['x_hat'] = x_hat
         return decompress_result
