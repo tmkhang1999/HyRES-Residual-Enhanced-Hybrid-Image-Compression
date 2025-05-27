@@ -1,6 +1,6 @@
 # HyRES: Residual-Enhanced Hybrid Image Compression
 
-HyRES is a state-of-the-art hybrid image compression framework that combines traditional JPEG compression with neural network-based residual compression. This approach achieves superior compression efficiency while maintaining high image quality.
+HyRES is a hybrid image compression framework that combines traditional JPEG compression with neural network-based residual compression. This approach achieves superior compression efficiency while maintaining high image quality.
 
 ## Architecture Overview
 
@@ -162,43 +162,3 @@ If you use this code in your research, please cite:
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-```angular2html
-HyRES-Residual-Enhanced-Hybrid-Image-Compression
-├── checkpoints
-├── data
-│   ├── train
-│   └── test
-├── models
-│   ├── hyres.py
-│   ├── checkerboard.py
-│   ├── layers
-│   │   ├── attention.py
-│   │   ├── checkerboard.py
-│   │   ├── common.py
-│   │   └── enhancement.py
-│   └── utils/
-│       ├── jpeg_compression.py
-│       └── quantization.py
-├── src/
-│   ├── losses/
-│   │   ├── rd_loss.py
-│   │   └── vgg16.py
-│   ├── utils/
-│   │   ├── checkpoint_utils.py
-│   │   ├── dataset_utils.py
-│   │   ├── engine.py
-│   │   └── optimizers.py
-│   ├── inference.py
-│   ├── training.py
-│   ├── refine_training.py
-│   ├── refine_inference.py
-│   └── updata.py
-├── .gitignore
-├── LICENSE
-├── README.md
-├── requirements.txt
-├── setup.sh
-└── train.sh
-└── test.sh
-```
