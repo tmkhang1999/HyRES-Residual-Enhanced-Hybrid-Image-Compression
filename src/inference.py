@@ -1,382 +1,253 @@
-"""
-Evaluate an end-to-end compression model on an image dataset.
-"""
 import argparse
-import csv
-import json
-import math
-import os
 import sys
-import time
-from collections import defaultdict
-from typing import List
+import os
+from pathlib import Path
 
-import compressai
 import torch
-import torch.nn as nn
-import torchvision
+import torchvision.transforms as transforms
+from torchvision.utils import save_image
 from PIL import Image
-from compressai.zoo import load_state_dict
-from pytorch_msssim import ms_ssim
-from torchvision import transforms
+
 from models import ResidualJPEGCompression, LightWeightCheckerboard
+from src.utils import load_checkpoint
 
-torch.backends.cudnn.deterministic = True
-torch.set_num_threads(1)
-
-# from torchvision.datasets.folder
-IMG_EXTENSIONS = (
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".ppm",
-    ".bmp",
-    ".pgm",
-    ".tif",
-    ".tiff",
-    ".webp",
-)
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-def collect_images(rootpath: str) -> List[str]:
-    return [
-        os.path.join(rootpath, f)
-        for f in os.listdir(rootpath)
-        if os.path.splitext(f)[-1].lower() in IMG_EXTENSIONS
-    ]
-
-
-def psnr(a: torch.Tensor, b: torch.Tensor) -> float:
-    mse = torch.nn.functional.mse_loss(a, b).item()
-    return -10 * math.log10(mse)
-
-
-def read_image(filepath: str) -> torch.Tensor:
-    assert os.path.isfile(filepath)
-    img = Image.open(filepath).convert("RGB")
-    return transforms.ToTensor()(img)
-
-
-@torch.no_grad()
-def inference(model, x, f, outputpath, patch):
-    x = x.unsqueeze(0)
-    imgpath = f.split('/')
-    imgpath[-2] = outputpath
-    imgPath = '/'.join(imgpath)
-    csvfile = '/'.join(imgpath[:-1]) + '/result.csv'
-    print('decoding img: {}'.format(f))
-
-    # Padding
-    h, w = x.size(2), x.size(3)
-    p = patch  # maximum 6 strides of 2
-    new_h = (h + p - 1) // p * p
-    new_w = (w + p - 1) // p * p
-    padding_left = 0
-    padding_right = new_w - w - padding_left
-    padding_top = 0
-    padding_bottom = new_h - h - padding_top
-    pad = nn.ConstantPad2d((padding_left, padding_right, padding_top, padding_bottom), 0)
-    x_padded = pad(x)
-
-    _, _, height, width = x_padded.size()
-
-    # Compression
-    start = time.time()
-    out_enc = model.compress(x_padded)
-    enc_time = time.time() - start
-
-    # Decompression
-    start = time.time()
-    out_dec = model.decompress(out_enc)
-    dec_time = time.time() - start
-
-    # Remove padding
-    out_dec["x_hat"] = torch.nn.functional.pad(
-        out_dec["x_hat"], (-padding_left, -padding_right, -padding_top, -padding_bottom)
-    )
-
-    # Calculate bits per pixel
-    num_pixels = x.size(0) * x.size(2) * x.size(3)
-    bpp = 0
-
-    # Handle structured strings from checkerboard model
-    for string_list in out_enc["strings"][0]:  # First element is y strings (anchor + non-anchor)
-        for s in string_list:  # Each string_list has anchor strings and non-anchor strings
-            bpp += len(s)
-
-    # Add z strings
-    for s in out_enc["strings"][1]:  # Second element is z strings
-        bpp += len(s)
-
-    bpp *= 8.0 / num_pixels
-
-    # Calculate anchor/non-anchor bpp portions (if needed)
-    z_bpp = sum(len(s) for s in out_enc["strings"][1]) * 8.0 / num_pixels
-    y_bpp = bpp - z_bpp
-
-    # Save reconstructed image
-    torchvision.utils.save_image(out_dec["x_hat"], imgPath, nrow=1)
-
-    # Calculate quality metrics
-    mse = torch.nn.functional.mse_loss(x, out_dec["x_hat"]).item()
-    mse_db = mse * 255 ** 2
-    PSNR = psnr(x, out_dec["x_hat"])
-    msssim = ms_ssim(x, out_dec["x_hat"], data_range=1.0).item()
-
-    # Write results to CSV
-    with open(csvfile, 'a+') as f:
-        row = [imgpath[-1], bpp * num_pixels, num_pixels, bpp, y_bpp, z_bpp,
-               mse_db, PSNR, msssim,
-               enc_time, dec_time]
-
-        # Add detailed timing - handle both dictionary and float time values
-        if "time" in out_enc:
-            if isinstance(out_enc["time"], dict):
-                # ELIC style - dictionary with detailed timings
-                row.extend([
-                    out_enc["time"].get('y_enc', 0) * 1000,
-                    out_dec["time"].get('y_dec', 0) * 1000 if "time" in out_dec else 0,
-                    out_enc["time"].get('z_enc', 0) * 1000,
-                    out_enc["time"].get('z_dec', 0) * 1000,
-                    out_enc["time"].get('params', 0) * 1000
-                ])
-            else:
-                # Checkerboard style - just total compression time
-                total_time = out_enc["time"] * 1000
-                row.extend([total_time / 2, total_time / 2, 0, 0, 0])
-        else:
-            row.extend([0, 0, 0, 0, 0])  # Add zeros if time not available
-
-        write = csv.writer(f)
-        write.writerow(row)
-
-    print(f'bpp: {bpp:.4f}, MSE: {mse_db:.4f}, PSNR: {PSNR:.4f}, MS-SSIM: {msssim:.4f}, encoding time: {enc_time:.4f}s, decoding time: {dec_time:.4f}s')
-
-    return {
-        "psnr": PSNR,
-        "mse": mse_db,
-        "msssim": msssim,
-        "bpp": bpp,
-        "encoding_time": enc_time,
-        "decoding_time": dec_time,
-    }
-
-
-@torch.no_grad()
-def inference_entropy_estimation(model, x, f, outputpath, patch):
-    x = x.unsqueeze(0)
-    imgpath = f.split('/')
-    imgpath[-2] = outputpath
-    imgPath = '/'.join(imgpath)
-    csvfile = '/'.join(imgpath[:-1]) + '/result.csv'
-    print('decoding img: {}'.format(f))
-
-    # Padding
-    h, w = x.size(2), x.size(3)
-    p = patch  # maximum 6 strides of 2
-    new_h = (h + p - 1) // p * p
-    new_w = (w + p - 1) // p * p
-    padding_left = 0
-    padding_right = new_w - w - padding_left
-    padding_top = 0
-    padding_bottom = new_h - h - padding_top
-    pad = nn.ConstantPad2d((padding_left, padding_right, padding_top, padding_bottom), 0)
-    x_padded = pad(x)
-
-    # Inference with entropy estimation (no actual coding)
-    start = time.time()
-    out_net = model.inference(x_padded)
-    elapsed_time = time.time() - start
-
-    # Remove padding
-    out_net["x_hat"] = torch.nn.functional.pad(
-        out_net["x_hat"], (-padding_left, -padding_right, -padding_top, -padding_bottom)
-    )
-
-    # Calculate bits per pixel
-    num_pixels = x.size(0) * x.size(2) * x.size(3)
-    bpp = sum(
-        (torch.log(likelihoods).sum() / (-math.log(2) * num_pixels))
-        for likelihoods in out_net["likelihoods"].values()
-    )  # Missing closing parenthesis was here
-
-    # Split bpp between y and z
-    y_bpp = (torch.log(out_net["likelihoods"]["y"]).sum() / (-math.log(2) * num_pixels))
-    z_bpp = (torch.log(out_net["likelihoods"]["z"]).sum() / (-math.log(2) * num_pixels))
-
-    # Save reconstructed image
-    torchvision.utils.save_image(out_net["x_hat"], imgPath, nrow=1)
-
-    # Calculate quality metrics
-    PSNR = psnr(x, out_net["x_hat"])
-
-    # Write results to CSV
-    with open(csvfile, 'a+') as f:
-        row = [imgpath[-1], bpp.item() * num_pixels, num_pixels, bpp.item(), y_bpp.item(), z_bpp.item(),
-               torch.nn.functional.mse_loss(x, out_net["x_hat"]).item() * 255 ** 2, PSNR,
-               ms_ssim(x, out_net["x_hat"], data_range=1.0).item(),
-               elapsed_time / 2.0, elapsed_time / 2.0]
-
-        # Add detailed timing if available
-        if "time" in out_net:
-            row.extend([
-                out_net["time"].get('y_enc', 0) * 1000,
-                out_net["time"].get('y_dec', 0) * 1000,
-                out_net["time"].get('z_enc', 0) * 1000,
-                out_net["time"].get('z_dec', 0) * 1000,
-                out_net["time"].get('params', 0) * 1000
-            ])
-        else:
-            row.extend([0, 0, 0, 0, 0])  # Add zeros if detailed timing not available
-
-        write = csv.writer(f)
-        write.writerow(row)
-
-    return {
-        "psnr": PSNR,
-        "bpp": bpp.item(),
-        "encoding_time": elapsed_time / 2.0,  # broad estimation
-        "decoding_time": elapsed_time / 2.0,
-    }
-
-
-def eval_model(model, filepaths, entropy_estimation=False, half=False, outputpath='Recon', patch=256):
-    device = next(model.parameters()).device
-    metrics = defaultdict(float)
-
-    # Create output directory
-    imgdir = filepaths[0].split('/')
-    imgdir[-2] = outputpath
-    imgDir = '/'.join(imgdir[:-1])
-    if not os.path.isdir(imgDir):
-        os.makedirs(imgDir)
-
-    # Create/reset CSV file
-    csvfile = imgDir + '/result.csv'
-    if os.path.isfile(csvfile):
-        os.remove(csvfile)
-    with open(csvfile, 'w') as f:
-        row = ['name', 'bits', 'pixels', 'bpp', 'y_bpp', 'z_bpp', 'mse', 'psnr(dB)', 'ms-ssim', 'enc_time(s)',
-               'dec_time(s)', 'y_enc(ms)', 'y_dec(ms)', 'z_enc(ms)', 'z_dec(ms)', 'param(ms)']
-        write = csv.writer(f)
-        write.writerow(row)
-
-    # Process each image
-    for f in filepaths:
-        x = read_image(f).to(device)
-        if not entropy_estimation:
-            if half:
-                model = model.half()
-                x = x.half()
-            rv = inference(model, x, f, outputpath, patch)
-        else:
-            rv = inference_entropy_estimation(model, x, f, outputpath, patch)
-        for k, v in rv.items():
-            metrics[k] += v
-
-    # Calculate average metrics
-    for k, v in metrics.items():
-        metrics[k] = v / len(filepaths)
-
-    return metrics
-
-
-def setup_args():
-    parser = argparse.ArgumentParser(
-        add_help=False,
-    )
-
-    # Common options.
-    parser.add_argument("--dataset", type=str, help="dataset path")
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description="Inference script for ResidualJPEGCompression model.")
     parser.add_argument(
-        "--output_path",
-        help="result output path",
+        "--checkpoint", type=str, required=True, help="Path to the checkpoint model"
     )
     parser.add_argument(
-        "-c",
-        "--entropy-coder",
-        choices=compressai.available_entropy_coders(),
-        default=compressai.available_entropy_coders()[0],
-        help="entropy coder (default: %(default)s)",
+        "--input", type=str, required=True, help="Path to input image or directory of images"
     )
     parser.add_argument(
-        "--cuda",
-        action="store_true",
-        help="enable CUDA",
+        "--output", type=str, default="./output", help="Output directory path"
     )
     parser.add_argument(
-        "--half",
-        action="store_true",
-        help="convert model to half floating point (fp16)",
+        "--N", type=int, default=128, help="Number of channels (default: %(default)s)"
     )
     parser.add_argument(
-        "--entropy-estimation",
-        action="store_true",
-        help="use evaluated entropy estimation (no entropy coding)",
+        "--M", type=int, default=192, help="Number of latent channels (default: %(default)s)"
     )
-    parser.add_argument(
-        "-p",
-        "--path",
-        dest="paths",
-        type=str,
-        required=True,
-        help="checkpoint path",
-    )
-    parser.add_argument(
-        "--patch",
-        type=int,
-        default=256,
-        help="padding patch size (default: %(default)s)",
-    )
-    parser.add_argument("--N", type=int, default=128, help="Number of channels")
-    parser.add_argument("--M", type=int, default=192, help="Number of latent channels")
     parser.add_argument(
         "--jpeg-quality",
         default=1,
         type=int,
         help="JPEG quality factor (default: %(default)s)",
     )
-    return parser
+    parser.add_argument(
+        "--cuda", type=lambda x: str(x).lower() == 'true',
+        default=True, help="Use cuda if available (default: %(default)s)"
+    )
+    parser.add_argument(
+        "--save-components",
+        action="store_true",
+        help="Save JPEG and residual components"
+    )
+
+    return parser.parse_args(argv)
+
+
+def process_image(model, img_path, output_dir, device, save_components=False):
+    """Process a single image through the model and save the output."""
+    # Load and preprocess the image
+    img = Image.open(img_path).convert('RGB')
+    transform = transforms.ToTensor()
+    x = transform(img).unsqueeze(0)  # Add batch dimension
+
+    # Get original dimensions for metrics calculation
+    num_pixels = x.size(0) * x.size(2) * x.size(3)
+
+    # Move to appropriate device
+    x = x.to(device)
+
+    # Processing
+    out_enc = model.compress(x)
+    enc_time = out_enc["time"]
+    out_dec = model.decompress(out_enc)
+    dec_time = out_dec["time"]
+
+    # Create output filename
+    img_name = os.path.basename(img_path)
+    base_name, ext = os.path.splitext(img_name)
+
+    # Save reconstructed image
+    recon_path = os.path.join(output_dir, f"{base_name}_recon{ext}")
+    save_image(out_dec["x_hat"], recon_path)
+
+    # Save JPEG decoded image if requested
+    with torch.no_grad():
+        out_net = model(x)
+
+    # Save component images if requested
+    if save_components:
+        # Save original image
+        original_path = os.path.join(output_dir, f"{base_name}_original{ext}")
+        save_image(x, original_path)
+
+        jpeg_path = os.path.join(output_dir, f"{base_name}_jpeg{ext}")
+        save_image(out_net["jpeg_decoded"], jpeg_path)
+
+        # Save residual images
+        residual_path = os.path.join(output_dir, f"{base_name}_residual{ext}")
+        residual_vis = out_net["residual"] * 0.5 + 0.5  # Normalize for better visualization
+        save_image(residual_vis, residual_path)
+
+        residual_hat_path = os.path.join(output_dir, f"{base_name}_residual_hat{ext}")
+        residual_hat_vis = out_net["residual_hat"] * 0.5 + 0.5
+        save_image(residual_hat_vis, residual_hat_path)
+
+    # Calculate y bpp
+    y_bpp = 0
+    for string_list in out_enc["strings"][0]:  # First element is y strings (anchor + non-anchor)
+        for s in string_list:
+            y_bpp += len(s) * 8
+    y_bpp /= num_pixels
+
+    # Calculate z bpp
+    z_bpp = 0
+    for s in out_enc["strings"][1]:
+        z_bpp += len(s) * 8
+    z_bpp /= num_pixels
+
+    # Get JPEG bpp
+    jpeg_bpp = out_net["jpeg_bpp_loss"].item()
+
+    # Calculate total bpp
+    total_bpp = jpeg_bpp + y_bpp + z_bpp
+
+    # Quality metrics
+    mse = torch.nn.functional.mse_loss(x, out_dec["x_hat"]).item()
+    mse_db = mse * 255 ** 2
+    psnr_val = -10 * math.log10(mse_db)
+
+    # Calculate MS-SSIM if available
+    try:
+        from pytorch_msssim import ms_ssim
+        msssim_val = ms_ssim(x, out_dec["x_hat"], data_range=1.0).item()
+    except ImportError:
+        msssim_val = 0
+
+    print(f"Processed {img_path}")
+    print(f"Total bpp: {total_bpp:.4f} (JPEG: {jpeg_bpp:.4f}, Y: {y_bpp:.5f}, Z: {z_bpp:.5f})")
+    print(f"MSE: {mse_db:.4f})")
+    print(f"PSNR: {psnr_val:.2f} dB, MS-SSIM: {msssim_val:.4f}")
+    print(f"Encoding time: {enc_time:.4f}s, Decoding time: {dec_time:.4f}s")
+
+    return {
+        "filename": img_name,
+        "total_bpp": total_bpp,
+        "jpeg_bpp": jpeg_bpp,
+        "y_bpp": y_bpp,
+        "z_bpp": z_bpp,
+        "mse": mse_db,
+        "psnr": psnr_val,
+        "ms_ssim": msssim_val,
+        "enc_time": enc_time,
+        "dec_time": dec_time,
+    }
 
 
 def main(argv):
-    parser = setup_args()
-    args = parser.parse_args(argv)
+    args = parse_args(argv)
 
-    filepaths = collect_images(args.dataset)
-    filepaths = sorted(filepaths)
-    if len(filepaths) == 0:
-        print("Error: no images found in directory.", file=sys.stderr)
-        sys.exit(1)
-
-    compressai.set_entropy_coder(args.entropy_coder)
-
-    state_dict = load_state_dict(torch.load(args.paths))
-    base_model = LightWeightCheckerboard(N=args.N, M=args.M)
-    model_cls = ResidualJPEGCompression(
-        base_model=base_model,
-        jpeg_quality=args.jpeg_quality,
-    )
-    model = model_cls.from_state_dict(state_dict, jpeg_quality=args.jpeg_quality).eval()
-
-    results = defaultdict(list)
-
+    # Set up device
     if args.cuda and torch.cuda.is_available():
-        model = model.to("cuda")
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
 
-    metrics = eval_model(model, filepaths, args.entropy_estimation, args.half, args.output_path, args.patch)
-    for k, v in metrics.items():
-        results[k].append(v)
+    print(f"Using device: {device}")
 
-    description = (
-        "entropy estimation" if args.entropy_estimation else args.entropy_coder
+    # Create output directory if it doesn't exist
+    os.makedirs(args.output, exist_ok=True)
+
+    # Load model from checkpoint
+    checkpoint_path = Path(args.checkpoint).resolve()
+    if not checkpoint_path.is_file():
+        raise RuntimeError(f'"{checkpoint_path}" is not a valid file.')
+
+    print(f"Loading model from {checkpoint_path}")
+    state_dict = load_checkpoint(checkpoint_path)
+
+    # Initialize model
+    base_model = LightWeightCheckerboard(N=args.N, M=args.M)
+    model = ResidualJPEGCompression(
+        base_model=base_model,
+        jpeg_quality=args.jpeg_quality
     )
-    output = {
-        "description": f"Inference ({description})",
-        "results": results,
-    }
-    print(json.dumps(output, indent=2))
+
+    # Load state dict
+    model.load_state_dict(state_dict)
+    model = model.to(device)
+    model.eval()
+
+    # Process input (single image or directory)
+    input_path = Path(args.input).resolve()
+
+    metrics = []
+
+    if input_path.is_file():
+        # Process single image
+        result = process_image(model, str(input_path), args.output, device, args.save_components)
+        metrics.append(result)
+    elif input_path.is_dir():
+        # Process all images in directory
+        image_extensions = ['.jpg', '.jpeg', '.png', '.bmp']
+        for img_path in input_path.glob('*'):
+            if img_path.suffix.lower() in image_extensions:
+                result = process_image(model, str(img_path), args.output, device, args.save_components)
+                metrics.append(result)
+    else:
+        raise RuntimeError(f'"{input_path}" is neither a file nor a directory.')
+
+    # Print average metrics
+    if metrics:
+        avg_metrics = {key: 0 for key in metrics[0].keys() if key != 'filename'}
+        for m in metrics:
+            for key in avg_metrics:
+                avg_metrics[key] += m[key]
+
+        for key in avg_metrics:
+            avg_metrics[key] /= len(metrics)
+
+        print("\nAverage metrics:")
+        print(f"Total bpp: {avg_metrics['total_bpp']:.4f} (JPEG: {avg_metrics['jpeg_bpp']:.4f}, "
+              f"Y: {avg_metrics['y_bpp']:.5f}, Z: {avg_metrics['z_bpp']:.5f})")
+        print(f"MSE: {avg_metrics['mse']:.4f} dB")
+        print(f"PSNR: {avg_metrics['psnr']:.2f} dB, MS-SSIM: {avg_metrics['ms_ssim']:.4f}")
+        print(f"Encoding time: {avg_metrics['enc_time']:.4f}s, Decoding time: {avg_metrics['dec_time']:.4f}s")
+
+    # Save metrics as CSV
+    if metrics:
+        import csv
+        csv_path = os.path.join(args.output, "metrics.csv")
+        with open(csv_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['filename', 'total_bpp', 'jpeg_bpp', 'y_bpp', 'z_bpp',
+                             'mse', 'psnr', 'ms_ssim', 'enc_time(s)', 'dec_time(s)'])
+            for m in metrics:
+                writer.writerow([
+                    m['filename'],
+                    m['total_bpp'],
+                    m['jpeg_bpp'],
+                    m['y_bpp'],
+                    m['z_bpp'],
+                    m['mse'],
+                    m['psnr'],
+                    m['ms_ssim'],
+                    m['enc_time'],
+                    m['dec_time']
+                ])
+        print(f"Metrics saved to {csv_path}")
 
 
 if __name__ == "__main__":
+    import math  # For log calculations
+
     main(sys.argv[1:])
