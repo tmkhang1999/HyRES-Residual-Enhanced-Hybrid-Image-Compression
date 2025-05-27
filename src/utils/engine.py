@@ -13,10 +13,10 @@ def train_one_epoch(
     device = next(model.parameters()).device
     train_loss = AverageMeter()
     train_bpp_loss = AverageMeter()
+    train_residual_bpp_loss = AverageMeter()
     train_y_bpp_loss = AverageMeter()
     train_z_bpp_loss = AverageMeter()
     train_mse_loss = AverageMeter()
-    train_vgg_loss = AverageMeter()
     start = time.time()
 
     # Initialize scaler for mixed precision
@@ -39,12 +39,12 @@ def train_one_epoch(
             loss = out_criterion["loss"] / gradient_accumulation_steps
 
         # Accumulate metrics
+        train_loss.update(out_criterion["loss"].item())
         train_bpp_loss.update(out_criterion["bpp_loss"].item())
+        train_residual_bpp_loss.update(out_criterion["residual_bpp_loss"].item())
         train_y_bpp_loss.update(out_criterion["y_bpp_loss"].item())
         train_z_bpp_loss.update(out_criterion["z_bpp_loss"].item())
-        train_loss.update(out_criterion["loss"].item())
         train_mse_loss.update(out_criterion["mse_loss"].item())
-        train_vgg_loss.update(out_criterion["vgg_loss"].item())
 
         # Scale loss and backward pass with mixed precision
         if mixed_precision:
@@ -95,21 +95,20 @@ def train_one_epoch(
                 f"{i * len(d)}/{len(train_dataloader.dataset)}"
                 f" ({100. * i / len(train_dataloader):.0f}%)]"
                 f'\tLoss: {out_criterion["loss"].item():.3f} |'
-                f'\tMSE loss: {out_criterion["mse_loss"].item():.3f} |'
-                f'\tVGG loss: {out_criterion["vgg_loss"].item():.3f} |'
                 f'\tBpp loss: {out_criterion["bpp_loss"].item():.3f} |'
                 f'\tResidual Bpp: {out_criterion["residual_bpp_loss"].item():.3f} |'
                 f'\ty_Bpp loss: {out_criterion["y_bpp_loss"].item():.4f} |'
                 f'\tz_Bpp loss: {out_criterion["z_bpp_loss"].item():.4f} |'
+                f'\tMSE loss: {out_criterion["mse_loss"].item():.3f} |'
                 f"\tAux loss: {aux_loss.item():.2f}"
             )
     print(f"Train epoch {epoch}: Average losses:"
           f"\tLoss: {train_loss.avg:.3f} |"
-          f"\tMSE loss: {train_mse_loss.avg:.3f} |"
-          f"\tVGG loss: {train_vgg_loss.avg:.3f} |"
           f"\tBpp loss: {train_bpp_loss.avg:.4f} |"
+          f"\tResidual Bpp: {train_residual_bpp_loss.avg:.4f} |"
           f"\ty_Bpp loss: {train_y_bpp_loss.avg:.5f} |"
           f"\tz_Bpp loss: {train_z_bpp_loss.avg:.5f} |"
+          f"\tMSE loss: {train_mse_loss.avg:.3f} |"
           f"\tTime (s) : {time.time() - start:.4f} |"
           )
 
@@ -122,10 +121,10 @@ def test_epoch(epoch, test_dataloader, model, criterion, save_images=False, save
 
     loss = AverageMeter()
     bpp_loss = AverageMeter()
+    residual_bpp_loss = AverageMeter()
     y_bpp_loss = AverageMeter()
     z_bpp_loss = AverageMeter()
     mse_loss = AverageMeter()
-    vgg_loss = AverageMeter()
     aux_loss = AverageMeter()
 
     # Set up directory for reconstructed images
@@ -146,17 +145,21 @@ def test_epoch(epoch, test_dataloader, model, criterion, save_images=False, save
             d = d.to(device)
             out_criterion = criterion(out_net, d)
 
-            aux_loss.update(model.aux_loss().item())
+            loss.update(out_criterion["loss"].item())
             bpp_loss.update(out_criterion["bpp_loss"].item())
+            residual_bpp_loss.update(out_criterion["residual_bpp_loss"].item())
             y_bpp_loss.update(out_criterion["y_bpp_loss"].item())
             z_bpp_loss.update(out_criterion["z_bpp_loss"].item())
-            loss.update(out_criterion["loss"].item())
             mse_loss.update(out_criterion["mse_loss"].item())
-            vgg_loss.update(out_criterion["vgg_loss"].item())
+            aux_loss.update(model.aux_loss().item())
 
-            # Save reconstructed images if requested (only for the latest best epoch)
-            if save_images and i < 5:  # Limit to first 20 images
+            # Save reconstructed images if requested
+            if save_images and i < 6:
                 from torchvision.utils import save_image
+
+                # Save original image
+                original_path = os.path.join(recon_dir, f"original_{i}.png")
+                save_image(d, original_path)
 
                 # Save reconstructed image
                 img_path = os.path.join(recon_dir, f"recon_{i}.png")
@@ -179,11 +182,11 @@ def test_epoch(epoch, test_dataloader, model, criterion, save_images=False, save
     print(
         f"Test epoch {epoch}: Average losses:"
         f"\tLoss: {loss.avg:.3f} |"
-        f"\tMSE loss: {mse_loss.avg:.3f} |"
-        f"\tVGG loss: {vgg_loss.avg:.3f} |"
         f"\tBpp loss: {bpp_loss.avg:.4f} |"
+        f"\tResidual Bpp: {residual_bpp_loss.avg:.4f} |"
         f"\ty_Bpp loss: {y_bpp_loss.avg:.4f} |"
         f"\tz_Bpp loss: {z_bpp_loss.avg:.4f} |"
+        f"\tMSE loss: {mse_loss.avg:.3f} |"
         f"\tAux loss: {aux_loss.avg:.4f}\n"
     )
 
@@ -193,7 +196,7 @@ def test_epoch(epoch, test_dataloader, model, criterion, save_images=False, save
         csv_path = os.path.join(savepath, "best_metrics.csv")
         with open(csv_path, 'w') as f:
             writer = csv.writer(f)
-            writer.writerow(['epoch', 'loss', 'mse_loss', 'vgg_loss', 'bpp_loss', 'y_bpp_loss', 'z_bpp_loss', 'aux_loss'])
-            writer.writerow([epoch, loss.avg, mse_loss.avg, vgg_loss.avg, bpp_loss.avg, y_bpp_loss.avg, z_bpp_loss.avg, aux_loss.avg])
+            writer.writerow(['epoch', 'loss', 'mse_loss', 'bpp_loss', 'residual_bpp', 'y_bpp_loss', 'z_bpp_loss', 'aux_loss'])
+            writer.writerow([epoch, loss.avg, mse_loss.avg, bpp_loss.avg, residual_bpp_loss.avg, y_bpp_loss.avg, z_bpp_loss.avg, aux_loss.avg])
 
     return loss.avg, bpp_loss.avg, mse_loss.avg
