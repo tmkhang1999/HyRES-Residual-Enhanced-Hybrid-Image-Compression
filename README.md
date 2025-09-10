@@ -33,7 +33,7 @@ The diagram below illustrates how data flows through the HyRES compression pipel
 ### Residual Compression Model Architecture
 
 <p align="center">
-  <img src="assets/compressed_model.png" alt="HyRES Compressed Model Architecture" width="80%">
+  <img src="assets/compressed_model.png" alt="HyRES Compressed Model Architecture" width="50%">
 </p>
 
 The residual compression model features:
@@ -122,7 +122,7 @@ For the refinement phase:
 ### Performance Metrics
 
 <p align="center">
-  <img src="assets/psnr.png" alt="PSNR Comparison" width="75%">
+  <img src="assets/psnr.png" alt="PSNR Comparison" width="50%">
 </p>
 
 ## Loss Functions
