@@ -2,6 +2,18 @@
 
 HyRES is a hybrid image compression framework that combines traditional JPEG compression with neural network-based residual compression. This approach achieves superior compression efficiency while maintaining high image quality.
 
+<p align="center">
+  <img src="assets/pipeline_idea.png" alt="HyRES Pipeline Concept" width="80%">
+</p>
+
+## Key Features
+
+- **Hybrid Compression**: Combines JPEG and neural compression for optimal rate-distortion performance
+- **Residual Learning**: Focuses on compressing the difference between original and JPEG-compressed images
+- **Multi-Scale Enhancement**: Uses a multi-scale refinement network to improve visual quality
+- **Attention Mechanisms**: Incorporates both channel and spatial attention for better feature extraction
+- **Checkerboard Pattern**: Implements efficient context modeling through checkerboard masking
+
 ## Architecture Overview
 
 The framework consists of three main components:
@@ -10,55 +22,26 @@ The framework consists of three main components:
 2. **Residual Compression**: Neural network-based compression of the JPEG residual
 3. **Multi-Scale Refinement**: Post-processing network to enhance the final reconstruction
 
-### Key Features
+### System Pipeline
 
-- **Hybrid Compression**: Combines JPEG and neural compression for optimal rate-distortion performance
-- **Residual Learning**: Focuses on compressing the difference between original and JPEG-compressed images
-- **Multi-Scale Enhancement**: Uses a multi-scale refinement network to improve visual quality
-- **Attention Mechanisms**: Incorporates both channel and spatial attention for better feature extraction
-- **Checkerboard Pattern**: Implements a checkerboard pattern for efficient context modeling
+The diagram below illustrates how data flows through the HyRES compression pipeline:
 
-## Project Structure
+<p align="center">
+  <img src="assets/pipeline_with_data.png" alt="HyRES Complete Pipeline" width="85%">
+</p>
 
-```
-HyRES-Residual-Enhanced-Hybrid-Image-Compression
-├── checkpoints/                # Model checkpoints directory
-├── data/                      # Dataset directory
-│   ├── train/                 # Training images
-│   └── test/                  # Test images
-├── models/                    # Model architecture definitions
-│   ├── hyres.py               # ResidualJPEGCompression (HyRES main model)
-│   ├── checkerboard.py        # LightWeightCheckerboard (residual model)
-│   ├── layers/                # Custom neural network layers
-│   │   ├── attention.py       # AttentionBlock
-│   │   ├── checkerboard.py    # MaskedConv2d, CheckboardMaskedConv2d
-│   │   ├── common.py          # conv1x1, conv3x3 helpers
-│   │   └── enhancement.py     # MultiScaleRefine (refinement network)
-│   └── utils/                 # Model utilities
-│       ├── jpeg_compression.py  # JPEG compression/decompression module
-│       └── quantization.py      # Quantizer class with noise and STE support
-├── src/                      # Source code
-│   ├── losses/               # Loss functions
-│   │   ├── rd_loss.py        # RateDistortionLoss implementation
-│   │   └── vgg16.py          # VGG-based perceptual loss
-│   ├── utils/                # Training utilities
-│   │   ├── checkpoint_utils.py  # Checkpoint management functions
-│   │   ├── dataset_utils.py     # ImageFolder dataset implementation
-│   │   ├── engine.py            # Training and testing loops
-│   │   └── optimizers.py        # Optimizer configuration
-│   ├── inference.py          # Model inference script
-│   ├── training.py           # Main training script
-│   ├── refine_training.py    # Refinement network training script
-│   ├── refine_inference.py   # Refinement network inference script
-│   └── updata.py             # Model update utilities
-├── .gitignore               # Git ignore file
-├── LICENSE                  # Apache-2.0 license file
-├── README.md                # Project documentation
-├── requirements.txt         # Python dependencies
-├── setup.sh                 # Environment setup script
-├── train.sh                 # Training script
-└── test.sh                  # Model testing script
-```
+### Residual Compression Model Architecture
+
+<p align="center">
+  <img src="assets/compressed_model.png" alt="HyRES Compressed Model Architecture" width="80%">
+</p>
+
+The residual compression model features:
+- **Analysis and Synthesis Transforms**: Convert images to/from latent representations
+- **Hyperprior Network**: Estimates distribution parameters for entropy coding
+- **Context Model**: Uses checkerboard pattern for efficient context modeling
+- **Attention Blocks**: Enhance feature extraction through channel and spatial attention
+- **Multi-Scale Refinement**: Post-processing network for quality enhancement
 
 ## Installation
 
@@ -105,46 +88,89 @@ python src/inference.py \
     --jpeg-quality 50
 ```
 
-## Model Architecture
+## Training Strategy
 
-### ResidualJPEGCompression
+### Multi-Phase Training
 
-The main model combines:
-- JPEG compression/decompression
-- Neural residual compression
-- Multi-scale refinement network
+We employ a multi-phase training approach to jointly optimize for both distortion (MSE loss) and rate (bits-per-pixel, bpp):
 
-### LightWeightCheckerboard
+- **Phase 1**: Start with high Lagrangian multiplier (λ = 0.045), focusing on image quality
+- **Subsequent Phases**: Gradually decrease λ to balance rate-distortion trade-off
+- **λ Schedule**: 0.045 → 0.032 → 0.016 → 0.008 → 0.004 → 0.002
 
-The residual compression model features:
-- Analysis and synthesis transforms
-- Hyperprior network
-- Checkerboard pattern for context modeling
-- Attention blocks for feature enhancement
+This staged reduction allows the model to first learn reconstruction, then progressively balance quality and compression rate.
+
+### Refinement Training
+
+For the refinement phase:
+- Use pretrained checkpoint from final phase (λ = 0.002)
+- **Freeze** main model weights during refinement
+- Train only the refinement network for improved perceptual quality
+
+## Performance
+
+### Computational Efficiency ⏱️
+
+| Model         | Encode Time (s) | Decode Time (s) | Total (s) |
+|---------------|-----------------|-----------------|-----------|
+| Model A (2018) | 0.22            | 0.24            | 0.46      |
+| Model B (2018) | 2.85            | 3.74            | 6.59      |
+| Cheng2020      | 3.57            | 6.56            | 10.31     |
+| ELIC (2022)    | 4.31            | 4.54            | 8.85      |
+| **Our HyRES**  | **0.476**       | **0.286**       | **0.762** |
+
+### Performance Metrics
+
+<p align="center">
+  <img src="assets/psnr.png" alt="PSNR Comparison" width="75%">
+</p>
 
 ## Loss Functions
 
 The model uses a combination of:
-- Rate-distortion loss
-- MSE loss
-- VGG perceptual loss
+- **Rate-Distortion Loss**: Balances compression rate and reconstruction quality
+- **MSE Loss**: Pixel-wise reconstruction error
+- **VGG Perceptual Loss**: Perceptual quality enhancement
 
-## Multi-Phase Training Strategy
+## Project Structure
 
-We employ a multi-phase training approach to jointly optimize for both distortion (MSE loss) and rate (bits-per-pixel, bpp):
-
-- **Phase 1:** Start with a high Lagrangian multiplier (λ = 0.045), focusing primarily on image quality. At this stage, the task is treated more as image reconstruction than compression.
-- **Subsequent Phases:** Gradually decrease λ to shift the optimization focus toward the rate-distortion trade-off. The λ schedule is as follows:
-  - λ: 0.045 → 0.032 → 0.016 → 0.008 → 0.004 → 0.002
-
-This staged reduction in λ allows the model to first learn to reconstruct images well, then progressively balance between image quality and compression rate.
-
-## Refinement Training
-
-For the refinement phase:
-- We utilize the pretrained checkpoint obtained from the final phase (phase 6, λ = 0.002).
-- The main model weights are **frozen** during refinement.
-- Only the refinement network (e.g., multi-scale enhancement or post-processing blocks) is trained, further improving the perceptual quality of the reconstructed images.
+```
+HyRES-Residual-Enhanced-Hybrid-Image-Compression
+├── checkpoint/                # Model checkpoints directory
+├── data/                      # Dataset directory
+│   ├── train/                 # Training images
+│   └── test/                  # Test images
+├── models/                    # Model architecture definitions
+│   ├── hyres.py               # ResidualJPEGCompression (HyRES main model)
+│   ├── checkerboard.py        # LightWeightCheckerboard (residual model)
+│   ├── layers/                # Custom neural network layers
+│   │   ├── attention.py       # AttentionBlock
+│   │   ├── checkerboard.py    # MaskedConv2d, CheckboardMaskedConv2d
+│   │   ├── common.py          # conv1x1, conv3x3 helpers
+│   │   └── enhancement.py     # MultiScaleRefine (refinement network)
+│   └── utils/                 # Model utilities
+│       ├── jpeg_compression.py  # JPEG compression/decompression module
+│       └── quantization.py      # Quantizer class with noise and STE support
+├── src/                      # Source code
+│   ├── losses/               # Loss functions
+│   │   ├── rd_loss.py        # RateDistortionLoss implementation
+│   │   └── vgg16.py          # VGG-based perceptual loss
+│   ├── utils/                # Training utilities
+│   │   ├── checkpoint_utils.py  # Checkpoint management functions
+│   │   ├── dataset_utils.py     # ImageFolder dataset implementation
+│   │   ├── engine.py            # Training and testing loops
+│   │   └── optimizers.py        # Optimizer configuration
+│   ├── inference.py          # Model inference script
+│   ├── training.py           # Main training script
+│   ├── refine_training.py    # Refinement network training script
+│   ├── refine_inference.py   # Refinement network inference script
+│   └── updata.py             # Model update utilities
+├── assets/                   # Visual assets and figures
+├── requirements.txt         # Python dependencies
+├── setup.sh                 # Environment setup script
+├── train.sh                 # Training script
+└── test.sh                  # Model testing script
+```
 
 ## Citation
 
