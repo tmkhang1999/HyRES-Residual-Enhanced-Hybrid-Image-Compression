@@ -3,7 +3,7 @@
 HyRES is a hybrid image compression framework that combines traditional JPEG compression with neural network-based residual compression. This approach achieves superior compression efficiency while maintaining high image quality.
 
 <p align="center">
-  <img src="assets/pipeline_idea.png" alt="HyRES Pipeline Concept" width="80%">
+  <img src="assets/pipeline_idea.png" alt="HyRES Pipeline Concept" width="50%">
 </p>
 
 ## Key Features
@@ -27,13 +27,13 @@ The framework consists of three main components:
 The diagram below illustrates how data flows through the HyRES compression pipeline:
 
 <p align="center">
-  <img src="assets/pipeline_with_data.png" alt="HyRES Complete Pipeline" width="85%">
+  <img src="assets/pipeline_with_data.png" alt="HyRES Complete Pipeline" width="50%">
 </p>
 
 ### Residual Compression Model Architecture
 
 <p align="center">
-  <img src="assets/compressed_model.png" alt="HyRES Compressed Model Architecture" width="50%">
+  <img src="assets/compressed_model.png" alt="HyRES Compressed Model Architecture" width="30%">
 </p>
 
 The residual compression model features:
