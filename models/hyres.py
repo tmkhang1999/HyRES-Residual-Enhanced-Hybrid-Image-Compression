@@ -19,6 +19,9 @@ class ResidualJPEGCompression(CompressionModel):
 
         # Add refinement layers to reduce JPEG blocking artifacts
         self.refine = MultiScaleRefine(in_channels=3, mid_channels=64)
+        # Turned off by load_state_dict when a checkpoint has no refine.* weights,
+        # so an untrained (random) refinement net never touches the output.
+        self.use_refine = True
 
     def forward(self, x, noisequant=False):
         """
@@ -62,8 +65,7 @@ class ResidualJPEGCompression(CompressionModel):
         x_hat_initial = jpeg_decoded + residual_hat
 
         # Apply refinement convolutions for further artifact removal
-        refined = self.refine(x_hat_initial)
-        x_hat = x_hat_initial + refined
+        x_hat = x_hat_initial + self.refine(x_hat_initial) if self.use_refine else x_hat_initial
         x_hat = torch.clamp(x_hat, 0, 1)  # Ensure output is in valid range
 
         # Return results including likelihoods from residual model
@@ -127,8 +129,7 @@ class ResidualJPEGCompression(CompressionModel):
         x_hat_initial = jpeg_decoded + decompress_result["x_hat"]
 
         # Apply refinement convolutions for further artifact removal
-        refined = self.refine(x_hat_initial)
-        x_hat = x_hat_initial + refined
+        x_hat = x_hat_initial + self.refine(x_hat_initial) if self.use_refine else x_hat_initial
         x_hat = torch.clamp(x_hat, 0, 1)
         decompress_result['x_hat'] = x_hat
         return decompress_result
@@ -161,6 +162,11 @@ class ResidualJPEGCompression(CompressionModel):
 
         if refine_state_dict:
             self.refine.load_state_dict(refine_state_dict)
+            self.use_refine = True
+        else:
+            self.use_refine = False
+            print("Warning: checkpoint has no refine.* weights; refinement is disabled "
+                  "(output = JPEG + decoded residual).")
 
         # Load any remaining parameters
         if model_state_dict:
