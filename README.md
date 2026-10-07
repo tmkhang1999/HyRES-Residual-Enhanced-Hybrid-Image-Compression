@@ -1,185 +1,131 @@
+<div align="center">
+
 # HyRES: Residual-Enhanced Hybrid Image Compression
 
-HyRES compresses an image with a very low-quality JPEG, then uses a small neural codec to compress only what JPEG got wrong (the residual). The result looks much better than JPEG at similar bitrates and encodes and decodes far faster than fully neural codecs.
+**Minh Khang Tran, Dinh Hoang Dai** &middot; Course research project, 2025
 
-Authors: Minh Khang Tran, Dinh Hoang Dai. Project page: [tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/) (served from `docs/`).
+[![Project page](https://img.shields.io/badge/Project-Page-2a78d6?logo=github)](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-555555)](LICENSE)
+[![Built on CompressAI](https://img.shields.io/badge/Built_on-CompressAI-555555)](https://github.com/InterDigitalInc/CompressAI)
 
-<p align="center">
-  <img src="docs/static/fig/hyres_pipeline.svg" alt="HyRES pipeline: quality-1 JPEG plus an entropy-coded residual" width="720">
-</p>
+<img src="docs/static/fig/hyres_pipeline.svg" alt="HyRES pipeline: a quality-1 JPEG plus an entropy-coded residual" width="720">
 
-## Contents
+</div>
 
-1. [Why](#why)
-2. [How it works](#how-it-works)
-3. [Results](#results)
-4. [Repository layout](#repository-layout)
-5. [Setup](#setup)
-6. [Reproduce the experiments](#reproduce-the-experiments)
-7. [Known limitations](#known-limitations)
-8. [Future work](#future-work)
-9. [Citation and license](#citation-and-license)
+**Figure 1.** HyRES sends a quality-1 JPEG plus a learned code for the residual *r* = *x* - *x*<sub>J</sub> (what the JPEG got wrong). The decoder adds the decoded residual back. Thumbnails are real outputs of the released Phase 1 model; bitrates are Kodak averages.
 
-## Why
+## Overview
 
-- JPEG degrades badly at low bitrates (blocking, color banding).
-- Fully neural codecs fix this but are large, slow and need big GPUs.
-- Goal: keep JPEG's speed and compatibility, add neural quality on top, and train on a modest machine (one NVIDIA A40, 16 GB GPU memory, 32 GB RAM) with a small dataset (Mini-ImageNet, 60k images, 7 GB).
+Standard codecs such as JPEG are fast and supported everywhere but lose detail and color at low bitrates. Learned codecs are far more efficient but large, slow and incompatible with existing viewers. HyRES keeps a standard JPEG as the base layer and spends a small learned codec (10.14M parameters) only on the residual, so the file still contains a valid JPEG. On Kodak, the released model reaches **37.41 dB at 1.563 bpp, 2.1 dB above JPEG at the same bitrate**, and encodes plus decodes an image in about 0.76 s on one GPU. It does not match state-of-the-art learned codecs: ELIC reaches the same quality at about half the bits. HyRES trades compression efficiency for a small model, fast coding and backward compatibility.
 
-## How it works
+<details>
+<summary><b>Terms used below</b></summary>
 
-The figure at the top shows the full pipeline with real Phase 1 outputs:
+| Term | Meaning |
+|------|---------|
+| bpp | Bits per pixel: file size in bits divided by the number of pixels. Lower is smaller. |
+| PSNR | Peak signal-to-noise ratio in dB, from the mean squared error on the 0-255 scale. Higher is better. |
+| MS-SSIM | Multi-scale structural similarity, 0 to 1. Higher is better. |
+| Rate-distortion (RD) | The trade-off between file size (rate) and error (distortion). A better codec has a higher RD curve. |
+| lambda | Training weight on distortion in `loss = bpp + lambda * MSE`. Higher lambda gives larger files with less error; each lambda gives one model, one point on the RD curve. |
+| Phase *k* | The model trained with the *k*-th lambda of the schedule 0.045, 0.032, 0.016, 0.008, 0.004, 0.002. |
+| Entropy coding | Lossless compression of quantized values with an arithmetic coder (AE encodes, AD decodes), using predicted probabilities. Better predictions mean fewer bits. |
+| Hyperprior | A small side network that sends a few extra bits (*z*) describing how to predict the main latent (*y*). |
 
-1. Compress the image with JPEG at quality 1 (TurboJPEG, runs on CPU).
-2. Decode that JPEG and subtract it from the original to get the residual map.
-3. Compress the residual with a lightweight learned codec (10.14M parameters).
-4. Store both bitstreams in one package. The decoder adds the decoded residual to the decoded JPEG. An optional refinement network can then remove leftover blocking; the released Phase 1 weights do not include one.
+</details>
 
-Total bitrate is `JPEG bpp + residual-latent bpp (y) + hyper-latent bpp (z)`. If the neural part is skipped, the JPEG alone is still a valid image.
+## Method
 
-### Residual codec
-
-The codec is a hyperprior autoencoder (`N=128`, `M=192`) combining pieces from three papers:
-
-- GDN / inverse GDN activations (Balle et al., 2018, scale hyperprior).
-- Attention modules and residual bottleneck blocks (Cheng et al., 2020).
-- A checkerboard context model that decodes the latent in 2 parallel passes instead of one slow autoregressive pass (He et al., 2021).
+The residual codec is a scale-hyperprior autoencoder ([Balle et al., ICLR 2018](https://arxiv.org/abs/1802.01436)) with attention modules and residual bottleneck blocks ([Cheng et al., CVPR 2020](https://arxiv.org/abs/2001.01568)) and a checkerboard context model that decodes the latent in two parallel passes instead of one slow autoregressive pass ([He et al., CVPR 2021](https://arxiv.org/abs/2103.15306)).
 
 <p align="center">
   <img src="docs/static/fig/hyres_codec.svg" alt="Residual codec: hyperprior autoencoder with checkerboard context model" width="620">
 </p>
 
-Blue: learned modules. Teal: quantized latents being arithmetic-coded (AE) and decoded (AD). RBB: residual bottleneck block. The layer lists match `models/checkerboard.py`.
+**Figure 2.** Residual codec. Blue: learned modules. Teal: arithmetic coding (AE) and decoding (AD) of the quantized latents. The entropy parameters (mean and scale of each latent) come from the hyperprior and, for the second pass, from already decoded anchor positions. Layer lists match `models/checkerboard.py`.
 
-### Refinement network
-
-`MultiScaleRefine` (`models/layers/enhancement.py`) takes the summed reconstruction and predicts a correction: a squeeze-and-excitation block, three dilated-conv branches at full, 1/2 and 1/4 resolution, spatial attention, and a fusion conv. Its output is added back to the reconstruction.
-
-### Loss and training strategy
-
-Rate-distortion loss: `loss = bpp + lambda * MSE` (an optional VGG perceptual term, weight `alpha`, is off in the reported runs).
-
-The model is trained in six phases. High lambda first (learn to reconstruct), then lambda is lowered each phase to shift toward lower bitrate. Each phase starts from the best checkpoint of the previous one.
-
-- First phase, trained from scratch: noise-based quantization during early epochs, then straight-through rounding (STE).
-- Later phases (`--pretrained`): STE rounding from the start and `ReduceLROnPlateau`.
-- Refinement is trained last, with the phase-6 checkpoint frozen.
+**Training.** `loss = bpp + lambda * MSE` on Mini-ImageNet (60k images, 7 GB), 256x256 crops, one NVIDIA A40. The model is trained in six phases: a high lambda first so it learns to reconstruct, then lambda lowered phase by phase, each phase starting from the previous best checkpoint.
 
 ## Results
 
-Evaluation set: Kodak (24 full images, 768x512). Training set: Mini-ImageNet. JPEG quality 1 throughout.
+All results on Kodak (24 images, 768x512), PSNR on RGB, averaged per image.
 
-### Verified: Phase 1 checkpoint, real bitstream
+<p align="center">
+  <img src="docs/static/fig/rd_kodak.svg" alt="PSNR versus bitrate on Kodak" width="560">
+</p>
 
-Measured with `scripts/evaluate.sh` on the released Phase 1 weights (lambda = 0.045, epoch 400, no refinement). The bpp here is the actual size of the JPEG bytes plus the entropy-coded residual, and the decoded image equals the model's forward-pass output exactly.
+**Figure 3.** Rate-distortion on Kodak. The star is the only HyRES result measured from a real bitstream; hollow circles are training-time estimates for the six phases (see [Reproducibility notes](#reproducibility-notes)). JPEG is measured with the same TurboJPEG settings as the HyRES base layer. Published codecs come from [CompressAI's benchmark results](https://github.com/InterDigitalInc/CompressAI/tree/master/results/image/kodak). The interactive version is on the [project page](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/#results).
 
-| Method | bpp | PSNR | MSE (0-255) | MS-SSIM |
-|--------|----:|-----:|------------:|--------:|
-| JPEG only (quality 1) | 0.203 | 21.54 dB | 476.66 | - |
-| **HyRES Phase 1** | **1.563** | **37.41 dB** | **12.15** | **0.989** |
+| Method | bpp | PSNR (dB) | MS-SSIM |
+|--------|----:|----------:|--------:|
+| JPEG quality 1 (the HyRES base layer alone) | 0.203 | 21.54 | - |
+| JPEG at the same bitrate as HyRES (interpolated from its RD curve) | 1.563 | 35.32 | - |
+| **HyRES Phase 1 (lambda = 0.045)** | **1.563** | **37.41** | **0.989** |
 
-Bitrate split: JPEG 0.203 + residual latent y 1.332 + hyper-latent z 0.028 bpp. Coding time on a laptop CPU is about 0.75 s to encode and 0.75 s to decode per image, residual codec only.
+HyRES bitrate split: JPEG 0.203 + residual latent *y* 1.332 + hyper-latent *z* 0.028 bpp. Most bits go to the residual at this operating point, so the gain over JPEG comes from coding those bits more efficiently, not from the JPEG layer.
 
-### As reported during the project: all phases
+**Efficiency.** Seconds per Kodak image, all models on the same A40 machine, measured during the project:
 
-These numbers come from the final presentation and could not be re-measured, because only the Phase 1 weights survive. They were computed during training, from the model's rate estimate on center crops, not from real bitstreams. That estimate had a bug (see [Code fixes](#code-fixes-after-the-project)). For Phase 1 the estimate said 1.465 bpp, against 1.563 bpp measured above, so treat the bpp column as indicative only. The MSE values are not affected by the bug.
-
-| Phase | lambda | Best epoch | bpp (estimated) | MSE (0-255) |
-|-------|--------|-----------:|------:|------:|
-| JPEG only (quality 1) | - | - | 0.2028 | 476.66 |
-| 1 | 0.045 | 400 | 1.465 | 11.76 |
-| 2 | 0.032 | 41 | 1.109 | 15.72 |
-| 3 | 0.016 | 6 | 0.852 | 22.89 |
-| 4 | 0.008 | 51 | 0.604 | 41.28 |
-| 5 | 0.004 | 13 | 0.460 | 63.79 |
-| 6 | 0.002 | 17 | 0.380 | 91.61 |
-| 6 + refinement | 0.002 | - | 0.380 (refinement adds no bits) | 84.69 (evaluation set not stated) |
-
-Lower lambda gives fewer bits and higher distortion, so the phases trace a rate-distortion curve.
-
-### Code fixes after the project
-
-Re-measuring the Phase 1 weights exposed three bugs, now fixed in `models/checkerboard.py`. None of them needs retraining.
-
-1. **Decoded residual was clamped to [0, 1].** Residuals are signed, so every negative correction was lost: real decoding gave 24.46 dB instead of 37.41 dB.
-2. **Each checkerboard half was entropy-coded as a full-size tensor**, spending bits on the other half's empty positions: 1.878 bpp instead of 1.563 bpp. Each pass now codes only its own positions.
-3. **The training rate estimate scored each latent with the sum of both halves' entropy parameters.** No decoder has that distribution, so the estimate was optimistic: 1.279 bpp on full Kodak images against 1.563 real. It now uses each position's own parameters and gives 1.666 bpp, a slight over-estimate. Models trained before this fix optimized the old, wrong rate term, so retraining should give a better rate-distortion trade-off.
-
-### Speed
-
-Measured during the project on the same VM (A40) for all models, before the bitstream fixes below, in seconds per image:
-
-| Model | Parameters | Encode | Decode | Total |
-|-------|-----------:|-------:|-------:|------:|
-| Balle 2018 hyperprior | - | 0.22 | 0.24 | 0.46 |
-| Joint Autoregressive + Hierarchical Priors (2018) | 14.13M | 2.85 | 3.74 | 6.59 |
-| Cheng 2020 | 13.18M | 3.57 | 6.56 | 10.13 |
-| ELIC (2022) | 33.79M | 4.31 | 4.54 | 8.85 |
+| Model | Parameters | Encode (s) | Decode (s) | Total (s) |
+|-------|-----------:|-----------:|-----------:|----------:|
+| Balle (ICLR18), scale hyperprior | - | 0.22 | 0.24 | 0.46 |
+| Minnen (NeurIPS18), joint autoregressive | 14.13M | 2.85 | 3.74 | 6.59 |
+| Cheng (CVPR20) | 13.18M | 3.57 | 6.56 | 10.13 |
+| ELIC (CVPR22) | 33.79M | 4.31 | 4.54 | 8.85 |
 | **HyRES** | **10.14M** | 0.476 | 0.286 | **0.762** |
 
-HyRES encode is slower than decode because the JPEG step runs on CPU.
+HyRES encodes slower than it decodes because the JPEG step runs on the CPU.
 
-### Quality versus other codecs
+<p align="center">
+  <img src="docs/static/fig/visual_comparison.png" alt="Crops of the original, JPEG at equal bitrate and HyRES on three Kodak images" width="900">
+</p>
 
-At the same bitrate as the verified Phase 1 point (1.563 bpp on Kodak), HyRES reaches 37.41 dB against 35.32 dB for JPEG with the same TurboJPEG settings, a gain of about 2.1 dB. The same 37.41 dB costs ELIC 0.83 bpp, VVC (VTM) 0.87 bpp and the 2018 scale-hyperprior codec 1.06 bpp, so HyRES trades compression efficiency for a small model, fast coding and a JPEG-compatible base layer. The [project page](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/#results) has the full interactive rate-distortion chart, with baselines from CompressAI's published Kodak results.
+**Figure 4.** Visual comparison at equal bitrate. JPEG uses the lowest quality whose file is at least as large as the HyRES file for that image. The crop is the most textured region of the original, chosen without looking at either reconstruction. Labels give whole-image values.
 
-## Repository layout
+## Pretrained models
 
-```
-models/
-  hyres.py                 ResidualJPEGCompression: JPEG + residual codec + refinement
-  checkerboard.py          LightWeightCheckerboard: the residual codec used by HyRES
-  elic.py, cheng2020.py    Reference baselines (not used by HyRES training or inference)
-  layers/                  attention, checkerboard masked conv, MultiScaleRefine
-  utils/                   JPEG wrappers (TurboJPEG, PIL) and quantizer
-src/
-  training.py              Train one lambda phase
-  refine_training.py       Train the refinement network (base model frozen)
-  updata.py                Export a checkpoint with rebuilt entropy-coder CDFs
-  inference.py             Real compress/decompress + metrics (bpp, MSE, PSNR, times)
-  refine_inference.py      Inference with a separately trained refinement checkpoint
-  losses/                  Rate-distortion loss, VGG perceptual loss
-  utils/                   Datasets, training loops, optimizers, checkpoints
-scripts/                   Thin shell wrappers, one per step (see below)
-tools/figures/             Scripts that build the project page figures and data
-docs/                      Project page (GitHub Pages); static/fig/ holds the paper figures (SVG)
-data/
-  test/                    Kodak images (24 PNGs), used for validation and evaluation
-  train/                   Mini-ImageNet images (downloaded, not tracked)
-  reorganize.py            Flattens the downloaded dataset into data/train
-checkpoint/                Training outputs (not tracked)
-```
+| Model | lambda | Kodak bpp | Kodak PSNR | Download |
+|-------|-------:|----------:|-----------:|----------|
+| HyRES Phase 1 (no refinement) | 0.045 | 1.563 | 37.41 dB | Coming soon (GitHub Release) |
 
-## Setup
+Only the Phase 1 weights survive from the project. Training checkpoints must be exported once before use (step 2 below).
 
-Requirements: Python 3.10+, a CUDA GPU for training (CPU or Apple MPS works for inference), and the native TurboJPEG library.
+## Getting started
+
+Requirements: Python 3.10+ and the native TurboJPEG library. Training needs a CUDA GPU; inference runs on CUDA or CPU (not Apple MPS).
 
 ```bash
-# Native library: Linux
-sudo apt-get install libturbojpeg
-# Native library: macOS
-brew install jpeg-turbo
-# Native library: Windows: install libjpeg-turbo from https://libjpeg-turbo.org
+# Native library (Linux / macOS); on Windows install libjpeg-turbo from https://libjpeg-turbo.org
+sudo apt-get install libturbojpeg        # or: brew install jpeg-turbo
 
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+source .venv/bin/activate                # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Download the training data (needs Kaggle credentials in `~/.kaggle/kaggle.json`, in `./kaggle.json`, or in `KAGGLE_USERNAME` / `KAGGLE_KEY`; never commit them):
+**Compress and decompress your own images** with the Phase 1 checkpoint (height and width must be multiples of 32):
+
+```bash
+# 1. Export once: rebuilds the entropy-coder tables needed for real bitstreams
+bash scripts/export.sh path/to/checkpoint_best_loss_400.pth.tar phase1
+
+# 2. Encode + decode an image or a folder; writes reconstructions and metrics.csv
+bash scripts/evaluate.sh checkpoint/inference/phase1.pth.tar my_image.png out/
+bash scripts/evaluate.sh checkpoint/inference/phase1.pth.tar             # all of Kodak
+```
+
+`metrics.csv` reports the real bitrate (split into JPEG, *y* and *z*), MSE, PSNR, MS-SSIM (if `pytorch-msssim` is installed) and encode/decode time per image.
+
+## Training
+
+Download Mini-ImageNet into `data/train` (needs Kaggle credentials in `~/.kaggle/kaggle.json`, `./kaggle.json`, or `KAGGLE_USERNAME` / `KAGGLE_KEY`; never commit them). `data/test` already holds Kodak.
 
 ```bash
 pip install kaggle
 bash scripts/setup_data.sh
 ```
 
-This fills `data/train`. `data/test` already contains Kodak.
-
-## Reproduce the experiments
-
-All steps run from the repository root. Each script prints its usage if called without arguments.
-
-**1. Train the six lambda phases.** Replace `<E>` with the epoch of the best checkpoint written in the previous phase's folder.
+Train the six phases; replace `<E>` with the epoch of the best checkpoint in the previous phase's folder:
 
 ```bash
 bash scripts/train.sh 0.045 checkpoint/phase1
@@ -190,69 +136,118 @@ bash scripts/train.sh 0.004 checkpoint/phase5 checkpoint/phase4/checkpoint_best_
 bash scripts/train.sh 0.002 checkpoint/phase6 checkpoint/phase5/checkpoint_best_loss_<E>.pth.tar
 ```
 
-Defaults: batch 16 with 2 gradient-accumulation steps, patch 256x256, mixed precision, `EPOCHS=1000`, `LR=3e-4` (override with environment variables). TensorBoard logs go to each save folder (`tensorboard --logdir checkpoint`).
+Defaults: batch 16 with 2 gradient-accumulation steps, 256x256 patches, mixed precision, `EPOCHS=1000`, `LR=3e-4` (override with environment variables). The first phase uses noise-based quantization for its early epochs, then straight-through rounding; later phases use straight-through rounding and `ReduceLROnPlateau`. TensorBoard logs go to each save folder (`tensorboard --logdir checkpoint`). Each script prints its usage when called without arguments.
 
-**2. (Optional) Train the refinement network** on the frozen phase-6 checkpoint:
+<details>
+<summary><b>Optional refinement network</b></summary>
+
+`MultiScaleRefine` (`models/layers/enhancement.py`) is a small post-filter on the decoded image: a squeeze-and-excitation block, dilated convolutions at full, 1/2 and 1/4 resolution, spatial attention and a fusion convolution, added back to the reconstruction. It is trained on a frozen final-phase model:
 
 ```bash
 bash scripts/train_refine.sh checkpoint/phase6/checkpoint_best_loss_<E>.pth.tar
 ```
 
-**3. Export a checkpoint** (rebuilds entropy-coder tables, required for real bitstreams):
+No refinement weights survive, so none of the verified results use it. When a checkpoint has no refinement weights, the model skips refinement and prints a warning.
 
-```bash
-bash scripts/export.sh checkpoint/phase6/checkpoint_best_loss_<E>.pth.tar phase6
-```
+</details>
 
-**4. Evaluate** on Kodak, or any image or folder:
+## Reproducibility notes
 
-```bash
-bash scripts/evaluate.sh checkpoint/inference/phase6.pth.tar                 # Kodak
-bash scripts/evaluate.sh checkpoint/inference/phase6.pth.tar my.png out/     # one image
-```
+<details>
+<summary><b>Numbers reported during the project (all six phases)</b></summary>
 
-This writes reconstructions, JPEG and residual visualizations, and `metrics.csv` (bpp split into JPEG / y / z, MSE, PSNR, encode and decode time) to the output folder.
+These come from the final presentation and cannot be re-measured, because only the Phase 1 weights survive. They were computed during training on center crops, from the model's rate estimate rather than real bitstreams, and that estimate had a bug (see below). For Phase 1 the estimate gave 1.465 bpp against 1.563 bpp measured, so treat the bpp column as indicative only. MSE is not affected by the bug.
 
-**5. Rebuild the project page figures** (`docs/`). This needs the Phase 1 export and the saved per-phase reconstructions in `checkpoint/1B`:
+| Phase | lambda | Best epoch | bpp (estimated) | MSE (0-255) |
+|-------|-------:|-----------:|------:|------:|
+| JPEG quality 1 | - | - | 0.2028 | 476.66 |
+| 1 | 0.045 | 400 | 1.465 | 11.76 |
+| 2 | 0.032 | 41 | 1.109 | 15.72 |
+| 3 | 0.016 | 6 | 0.852 | 22.89 |
+| 4 | 0.008 | 51 | 0.604 | 41.28 |
+| 5 | 0.004 | 13 | 0.460 | 63.79 |
+| 6 | 0.002 | 17 | 0.380 | 91.61 |
+| 6 + refinement | 0.002 | - | 0.380 | 84.69 (evaluation set not stated) |
+
+</details>
+
+<details>
+<summary><b>Codec bugs found when re-measuring, now fixed</b></summary>
+
+Decoding real bitstreams with the Phase 1 weights exposed three bugs in `models/checkerboard.py`. None requires retraining to use the current weights.
+
+1. **Decoded residual was clamped to [0, 1].** Residuals are signed, so every negative correction was lost: 24.46 dB instead of 37.41 dB.
+2. **Each checkerboard pass entropy-coded the full tensor**, spending bits on the other pass's empty positions: 1.878 bpp instead of 1.563 bpp.
+3. **The training rate estimate scored each latent with the sum of both passes' entropy parameters**, a distribution no decoder has, so it under-estimated the rate (1.279 vs 1.563 bpp on full images). It now uses each position's own parameters (1.666 bpp, a slight over-estimate). Models trained before this fix optimized the wrong rate term, so retraining should improve the RD trade-off.
+
+</details>
+
+<details>
+<summary><b>Rebuilding the figures and the project page</b></summary>
+
+Needs the exported Phase 1 model and the saved per-phase reconstructions in `checkpoint/1B`:
 
 ```bash
 bash scripts/evaluate.sh checkpoint/inference/phase1_lambda0.045.pth.tar data/test output/phase1
-python tools/figures/jpeg_curve.py
-python tools/figures/make_figures.py --eval-dir output/phase1 --phase-dir checkpoint/1B
-python tools/figures/make_diagrams.py --eval-dir output/phase1   # Fig. 1 and Fig. 2 (SVG)
-python -m http.server 8000 --directory docs   # preview at http://localhost:8000
+python tools/figures/jpeg_curve.py                                    # JPEG RD curve, HyRES settings
+python tools/figures/make_figures.py --eval-dir output/phase1 --phase-dir checkpoint/1B   # page images + data
+python tools/figures/make_diagrams.py --eval-dir output/phase1        # Figures 1 and 2 (SVG)
+python tools/figures/make_plots.py --eval-dir output/phase1           # Figures 3 and 4 (SVG/PDF/PNG)
+python -m http.server 8000 --directory docs                           # preview the page
 ```
 
-`tools/figures/data/compressai_kodak/` holds the published baseline curves from CompressAI (BSD 3-Clause Clear, license included). To publish the page, enable GitHub Pages for the `docs/` folder of the default branch.
+PDF versions of Figures 3 and 4 are written next to the SVG/PNG files for use in LaTeX. Baseline curves in `tools/figures/data/compressai_kodak/` are from CompressAI (BSD 3-Clause Clear, license included). To publish the page, enable GitHub Pages for the `docs/` folder of the default branch.
 
-## Known limitations
+</details>
 
-- Kodak is used both to pick the best checkpoint during training and to report results, so reported numbers are slightly optimistic. Use a separate validation split for a fair comparison.
-- Only MSE-based training was run. Reconstructions are smooth but not perceptually sharp.
-- Residual blocking is reduced by refinement but not removed (visible on zoomed crops).
-- Quality is well below state-of-the-art learned codecs at equal bitrate.
-- Image height and width must be multiples of 32 (the hyperprior latent z is at 1/32 resolution). Kodak (768x512) satisfies this; pad other images first.
-- Inference runs on CUDA or CPU. Apple MPS is not supported, because CompressAI's Gaussian likelihood needs an operator MPS lacks.
-- The in-repo model (`models/hyres.py`) includes the refinement network inside the main model. The slides describe it as a separate stage trained afterwards on a frozen base. `scripts/train_refine.sh` follows the second flow.
-- `src/inference.py` reports MS-SSIM only if `pytorch-msssim` is installed; otherwise it prints 0.
+## Limitations and future work
 
-## Future work
+- **One verified operating point.** A full RD curve and a BD-rate against VVC need several models trained at different lambdas, ideally with the fixed rate estimate.
+- **Kodak is not fully held out.** It was also used to pick checkpoints during training; a separate validation set would make the numbers stricter.
+- **MSE-only training.** Reconstructions are smooth rather than perceptually sharp. Planned: VGG or GAN losses (`loss = bpp + lambda * MSE + theta * VGG`), multi-scale and wavelet-based blocks against blocking, and a larger training set.
+- **Input size.** Height and width must be multiples of 32 (the hyper-latent *z* is at 1/32 resolution); pad other images first.
 
-1. VGG and GAN losses for perceptual quality: `loss = bpp + lambda * MSE + theta * VGG`.
-2. Multi-scale blocks to handle blockiness at different scales.
-3. Wavelet-based denoising blocks for small blocky edges.
-4. A larger, more diverse training set for better generalization.
+<details>
+<summary><b>Repository layout</b></summary>
 
-## Citation and license
+```
+models/
+  hyres.py                 ResidualJPEGCompression: JPEG + residual codec + optional refinement
+  checkerboard.py          LightWeightCheckerboard: the residual codec (Figure 2)
+  elic.py, cheng2020.py    Reference baselines (not used by HyRES training or inference)
+  layers/                  attention, checkerboard masked conv, MultiScaleRefine
+  utils/                   JPEG wrappers (TurboJPEG, PIL) and quantizer
+src/
+  training.py              Train one lambda phase
+  refine_training.py       Train the refinement network (base model frozen)
+  updata.py                Export a checkpoint with rebuilt entropy-coder tables
+  inference.py             Real compress/decompress + metrics
+  refine_inference.py      Inference with a separately trained refinement checkpoint
+  losses/                  Rate-distortion loss, VGG perceptual loss
+  utils/                   Datasets, training loops, optimizers, checkpoints
+scripts/                   One shell entry point per step: setup_data, train, train_refine, export, evaluate
+tools/figures/             Scripts that build every figure and the project page data
+docs/                      Project page (GitHub Pages); static/fig/ holds Figures 1-4
+data/test/                 Kodak images (24 PNGs)
+data/train/                Mini-ImageNet (downloaded, not tracked)
+checkpoint/                Training outputs (not tracked)
+```
 
-No paper has been published. If you use this code, cite the repository:
+</details>
+
+## Citation
+
+No paper has been published. If you use this code, please cite the repository:
 
 ```bibtex
-@misc{hyres,
-  title  = {HyRES: Residual-Enhanced Hybrid Image Compression},
-  author = {Tran, Minh Khang and Dinh, Hoang Dai},
+@misc{hyres2025,
+  title        = {HyRES: Residual-Enhanced Hybrid Image Compression},
+  author       = {Tran, Minh Khang and Dinh, Hoang Dai},
+  year         = {2025},
   howpublished = {\url{https://github.com/tmkhang1999/HyRES-Residual-Enhanced-Hybrid-Image-Compression}}
 }
 ```
 
-Apache License 2.0, see [LICENSE](LICENSE).
+## Acknowledgements
+
+Built on [CompressAI](https://github.com/InterDigitalInc/CompressAI). Kodak images by Eastman Kodak, released for unrestricted use. Licensed under Apache 2.0, see [LICENSE](LICENSE).
