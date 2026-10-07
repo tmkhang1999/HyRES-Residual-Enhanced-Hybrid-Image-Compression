@@ -2,7 +2,7 @@
 
 HyRES compresses an image with a very low-quality JPEG, then uses a small neural codec to compress only what JPEG got wrong (the residual). The result looks much better than JPEG at similar bitrates and encodes and decodes far faster than fully neural codecs.
 
-Authors: Minh Khang Tran, Dinh Hoang Dai.
+Authors: Minh Khang Tran, Dinh Hoang Dai. Project page: [tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/) (served from `docs/`).
 
 <p align="center">
   <img src="assets/pipeline_idea.png" alt="HyRES pipeline concept" width="80%">
@@ -120,7 +120,7 @@ Measured during the project on the same VM (A40) for all models, before the bits
 |-------|-----------:|-------:|-------:|------:|
 | Balle 2018 hyperprior | - | 0.22 | 0.24 | 0.46 |
 | Joint Autoregressive + Hierarchical Priors (2018) | 14.13M | 2.85 | 3.74 | 6.59 |
-| Cheng 2020 | 13.18M | 3.57 | 6.56 | 10.31 |
+| Cheng 2020 | 13.18M | 3.57 | 6.56 | 10.13 |
 | ELIC (2022) | 33.79M | 4.31 | 4.54 | 8.85 |
 | **HyRES** | **10.14M** | 0.476 | 0.286 | **0.762** |
 
@@ -128,11 +128,7 @@ HyRES encode is slower than decode because the JPEG step runs on CPU.
 
 ### Quality versus other codecs
 
-<p align="center">
-  <img src="assets/psnr.png" alt="PSNR versus bits per pixel on Kodak" width="55%">
-</p>
-
-The teal curve with six points is HyRES, one point per lambda phase, plotted at the estimated bpp from the table above. The verified Phase 1 point sits further right, at 1.563 bpp and 37.41 dB. It is clearly above JPEG (dashed tan) but several dB below the best learned codecs (ELIC, Cheng 2020, Minnen). The curves of the published codecs are reproduced from the ELIC paper; the olive curve is not named in the legend and its origin is not documented. The trade is quality for speed and a much smaller training budget.
+At the same bitrate as the verified Phase 1 point (1.563 bpp on Kodak), HyRES reaches 37.41 dB against 35.32 dB for JPEG with the same TurboJPEG settings, a gain of about 2.1 dB. The same 37.41 dB costs ELIC 0.83 bpp, VVC (VTM) 0.87 bpp and the 2018 scale-hyperprior codec 1.06 bpp, so HyRES trades compression efficiency for a small model, fast coding and a JPEG-compatible base layer. The [project page](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/#results) has the full interactive rate-distortion chart, with baselines from CompressAI's published Kodak results.
 
 ## Repository layout
 
@@ -152,6 +148,8 @@ src/
   losses/                  Rate-distortion loss, VGG perceptual loss
   utils/                   Datasets, training loops, optimizers, checkpoints
 scripts/                   Thin shell wrappers, one per step (see below)
+tools/figures/             Scripts that build the project page figures and data
+docs/                      Project page (GitHub Pages)
 data/
   test/                    Kodak images (24 PNGs), used for validation and evaluation
   train/                   Mini-ImageNet images (downloaded, not tracked)
@@ -223,13 +221,24 @@ bash scripts/evaluate.sh checkpoint/inference/phase6.pth.tar my.png out/     # o
 
 This writes reconstructions, JPEG and residual visualizations, and `metrics.csv` (bpp split into JPEG / y / z, MSE, PSNR, encode and decode time) to the output folder.
 
+**5. Rebuild the project page figures** (`docs/`). This needs the Phase 1 export and the saved per-phase reconstructions in `checkpoint/1B`:
+
+```bash
+bash scripts/evaluate.sh checkpoint/inference/phase1_lambda0.045.pth.tar data/test output/phase1
+python tools/figures/jpeg_curve.py
+python tools/figures/make_figures.py --eval-dir output/phase1 --phase-dir checkpoint/1B
+python -m http.server 8000 --directory docs   # preview at http://localhost:8000
+```
+
+`tools/figures/data/compressai_kodak/` holds the published baseline curves from CompressAI (BSD 3-Clause Clear, license included). To publish the page, enable GitHub Pages for the `docs/` folder of the default branch.
+
 ## Known limitations
 
 - Kodak is used both to pick the best checkpoint during training and to report results, so reported numbers are slightly optimistic. Use a separate validation split for a fair comparison.
 - Only MSE-based training was run. Reconstructions are smooth but not perceptually sharp.
 - Residual blocking is reduced by refinement but not removed (visible on zoomed crops).
 - Quality is well below state-of-the-art learned codecs at equal bitrate.
-- Image height and width must be multiples of 64 (the codec downsamples by 64). Kodak (768x512) satisfies this; pad other images first.
+- Image height and width must be multiples of 32 (the hyperprior latent z is at 1/32 resolution). Kodak (768x512) satisfies this; pad other images first.
 - Inference runs on CUDA or CPU. Apple MPS is not supported, because CompressAI's Gaussian likelihood needs an operator MPS lacks.
 - The in-repo model (`models/hyres.py`) includes the refinement network inside the main model. The slides describe it as a separate stage trained afterwards on a frozen base. `scripts/train_refine.sh` follows the second flow.
 - `src/inference.py` reports MS-SSIM only if `pytorch-msssim` is installed; otherwise it prints 0.

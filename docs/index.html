@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HyRES: Hybrid Image Compression</title>
+<meta name="description" content="HyRES compresses an image with a very low-quality JPEG, then codes only what JPEG got wrong with a 10M-parameter neural residual codec.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M8 8h7v7H8zM17 17h7v7h-7z' fill='white'/%3E%3Cpath d='M17 8h7v7h-7zM8 17h7v7H8z' fill='white' opacity='.45'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fcfcfb;
+  --surface: #ffffff;
+  --surface-2: #f4f3f0;
+  --border: #e3e2de;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #7a7974;
+  --accent: #2a78d6;
+  --accent-soft: #e6f0fc;
+  --jpeg: #eb6834;
+  --jpeg-soft: #fdece4;
+  --base-1: #6f6e69;
+  --base-2: #a3a29c;
+  --grid: #ecebe7;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+  --code-bg: #f4f3f0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #141413;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --border: #33332f;
+    --text: #f5f5f2;
+    --text-2: #c3c2b7;
+    --text-3: #8f8e86;
+    --accent: #3987e5;
+    --accent-soft: #1c2a3d;
+    --jpeg: #d95926;
+    --jpeg-soft: #3a2219;
+    --base-1: #a3a29c;
+    --base-2: #6f6e69;
+    --grid: #2a2a27;
+    --shadow: none;
+    --code-bg: #232321;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141413;
+  --surface: #1a1a19;
+  --surface-2: #232321;
+  --border: #33332f;
+  --text: #f5f5f2;
+  --text-2: #c3c2b7;
+  --text-3: #8f8e86;
+  --accent: #3987e5;
+  --accent-soft: #1c2a3d;
+  --jpeg: #d95926;
+  --jpeg-soft: #3a2219;
+  --base-1: #a3a29c;
+  --base-2: #6f6e69;
+  --grid: #2a2a27;
+  --shadow: none;
+  --code-bg: #232321;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.65 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+section { padding: 40px 0 8px; }
+h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 12px; font-weight: 700; }
+h1 .accent { color: var(--accent); }
+h2 { font-size: 26px; letter-spacing: -0.01em; margin: 0 0 6px; font-weight: 700; }
+h3 { font-size: 17px; margin: 28px 0 8px; font-weight: 600; }
+p { margin: 0 0 14px; color: var(--text-2); }
+p strong, li strong { color: var(--text); }
+.lede { font-size: 18px; color: var(--text-2); max-width: 760px; margin: 0 auto; }
+.kicker { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+.section-sub { color: var(--text-3); margin-bottom: 22px; }
+
+/* Header */
+header { text-align: center; padding: 56px 0 8px; }
+.authors { font-size: 18px; margin: 10px 0 2px; }
+.authors span { margin: 0 10px; white-space: nowrap; }
+.affil { color: var(--text-3); font-size: 15px; margin-bottom: 22px; }
+.buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 999px;
+  background: var(--text); color: var(--bg); font-weight: 500; font-size: 15px; border: 1px solid var(--text);
+}
+.btn.secondary { background: transparent; color: var(--text); border-color: var(--border); }
+.btn:hover { text-decoration: none; opacity: .88; }
+.btn svg { width: 16px; height: 16px; }
+.theme-toggle {
+  position: fixed; top: 14px; right: 14px; z-index: 10; width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2); cursor: pointer;
+  display: grid; place-items: center;
+}
+.theme-toggle svg { width: 18px; height: 18px; }
+
+/* Cards & figures */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+figure { margin: 0; }
+figcaption { font-size: 14px; color: var(--text-3); margin-top: 10px; line-height: 1.55; }
+figcaption strong { color: var(--text-2); }
+.diagram { padding: 18px; }
+.diagram .scroll { overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 640px; height: auto; }
+
+/* Comparison viewer */
+.viewer { padding: 14px; }
+.cmp {
+  position: relative; width: 100%; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 10px;
+  background: var(--surface-2); cursor: ew-resize; user-select: none; touch-action: pan-y;
+}
+.cmp.portrait { aspect-ratio: 2 / 3; max-width: 520px; margin: 0 auto; }
+.cmp img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.cmp .top { clip-path: inset(0 calc(100% - var(--pos, 50%)) 0 0); }
+.cmp .handle { position: absolute; top: 0; bottom: 0; left: var(--pos, 50%); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+.cmp .knob {
+  position: absolute; top: 50%; left: 50%; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%;
+  background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); display: grid; place-items: center; color: #222;
+}
+.cmp .tag {
+  position: absolute; bottom: 12px; padding: 5px 10px; border-radius: 8px; font-size: 13px; line-height: 1.35;
+  background: rgba(10,10,10,.72); color: #fff; backdrop-filter: blur(4px); pointer-events: none;
+}
+.cmp .tag b { font-weight: 600; }
+.cmp .tag.l { left: 12px; } .cmp .tag.r { right: 12px; text-align: right; }
+.cmp input[type=range] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+.viewer-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 12px; }
+.thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.thumbs button {
+  padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; cursor: pointer; background: none;
+  width: 64px; height: 44px; opacity: .7;
+}
+.thumbs button img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumbs button[aria-pressed="true"] { border-color: var(--accent); opacity: 1; }
+.seg { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button {
+  border: 0; background: transparent; color: var(--text-2); font: 500 14px Inter, sans-serif; padding: 6px 12px;
+  border-radius: 8px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* Stat tiles */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 26px 0 6px; }
+.stat { padding: 16px 18px; }
+.stat .v { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); line-height: 1.2; }
+.stat .v small { font-size: 16px; font-weight: 600; color: var(--text-2); }
+.stat .k { font-size: 13.5px; color: var(--text-3); line-height: 1.45; margin-top: 4px; }
+
+/* TL;DR */
+.tldr { padding: 22px 24px; border-left: 4px solid var(--accent); }
+.tldr ul { margin: 0; padding-left: 20px; color: var(--text-2); }
+.tldr li { margin: 6px 0; }
+
+/* Residual row & phase strip */
+.row-imgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.row-imgs figure img { width: 100%; display: block; border-radius: 8px; background: var(--surface-2); }
+.row-imgs figcaption { margin-top: 6px; font-size: 13px; }
+.op { font-family: "JetBrains Mono", monospace; color: var(--text-3); }
+.strip { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.strip figure img { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; image-rendering: pixelated; background: var(--surface-2); }
+.strip figcaption { margin-top: 5px; font-size: 12.5px; text-align: center; line-height: 1.35; }
+.strip figcaption b { display: block; color: var(--text); font-weight: 600; }
+
+/* Charts */
+.chart { padding: 18px 18px 12px; position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font-family: Inter, sans-serif; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--text-2); margin: 0 0 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; }
+.legend i.dot { width: 10px; height: 10px; border-radius: 50%; border: 0; }
+.legend i.ring { width: 10px; height: 10px; border-radius: 50%; border: 2px solid; }
+.tooltip {
+  position: absolute; pointer-events: none; padding: 8px 10px; border-radius: 8px; font-size: 13px; line-height: 1.45;
+  background: var(--text); color: var(--bg); white-space: nowrap; opacity: 0; transition: opacity .12s; z-index: 5;
+}
+.grid2 { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; align-items: start; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+th:first-child, td:first-child { text-align: left; }
+th { font-weight: 600; color: var(--text-2); font-size: 13px; }
+td { color: var(--text-2); }
+tr.hl td { color: var(--text); font-weight: 600; }
+details { padding: 4px 18px; }
+summary { cursor: pointer; padding: 12px 0; font-weight: 600; color: var(--text); }
+.table-scroll { overflow-x: auto; padding-bottom: 12px; }
+
+/* Notes, timeline, code */
+.notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.note { padding: 16px 18px; }
+.note h4 { margin: 0 0 6px; font-size: 15px; }
+.note p { font-size: 14.5px; margin: 0; }
+.note .delta { font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--text); margin-top: 8px; }
+.timeline { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--border); margin-left: 6px; }
+.timeline li { position: relative; padding: 0 0 18px 22px; }
+.timeline li::before {
+  content: ""; position: absolute; left: -7px; top: 7px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--accent);
+}
+.timeline .when { font-size: 13px; font-weight: 600; color: var(--accent); }
+.timeline .what { color: var(--text-2); font-size: 15px; }
+.timeline .what strong { color: var(--text); }
+pre {
+  margin: 0; padding: 16px 18px; background: var(--code-bg); border-radius: 12px; overflow-x: auto;
+  font: 13.5px/1.6 "JetBrains Mono", monospace; color: var(--text);
+}
+.code-wrap { position: relative; }
+.copy {
+  position: absolute; top: 10px; right: 10px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-2); border-radius: 8px; padding: 4px 10px; font: 500 12.5px Inter, sans-serif; cursor: pointer;
+}
+ul.plain { padding-left: 20px; color: var(--text-2); margin: 0 0 14px; }
+ul.plain li { margin: 5px 0; }
+footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-align: center; }
+.callout { padding: 14px 18px; border-radius: 12px; background: var(--accent-soft); color: var(--text-2); font-size: 15px; }
+.callout strong { color: var(--text); }
+
+@media (max-width: 760px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .grid2, .notes { grid-template-columns: 1fr; }
+  .row-imgs { grid-template-columns: repeat(2, 1fr); }
+  .strip { grid-template-columns: repeat(4, 1fr); }
+  .cmp .tag { font-size: 11.5px; bottom: 8px; padding: 4px 7px; }
+  .cmp .tag.l { left: 8px; } .cmp .tag.r { right: 8px; }
+}
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+</button>
+
+<div class="wrap">
+
+<header>
+  <h1>HyRES: <span class="accent">Residual-Enhanced</span><br>Hybrid Image Compression</h1>
+  <div class="authors"><span>Minh Khang Tran</span><span>Dinh Hoang Dai</span></div>
+  <div class="affil">Course research project &middot; February to May 2025</div>
+  <div class="buttons">
+    <a class="btn" href="https://github.com/tmkhang1999/HyRES-Residual-Enhanced-Hybrid-Image-Compression">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      Code
+    </a>
+    <a class="btn secondary" href="#results">Results</a>
+    <a class="btn secondary" href="#citation">BibTeX</a>
+  </div>
+</header>
+
+<!-- Teaser: interactive comparison -->
+<section style="padding-top:28px">
+  <div class="card viewer">
+    <div class="cmp" id="cmp">
+      <img class="bottom" id="cmpBottom" alt="">
+      <img class="top" id="cmpTop" alt="">
+      <div class="handle"><div class="knob"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg></div></div>
+      <div class="tag l" id="tagL"></div>
+      <div class="tag r" id="tagR"></div>
+      <input type="range" min="0" max="100" value="50" step="0.1" id="cmpRange" aria-label="Comparison slider position">
+    </div>
+    <div class="viewer-bar">
+      <div class="thumbs" id="thumbs" role="group" aria-label="Choose image"></div>
+      <div class="seg" role="group" aria-label="Comparison mode">
+        <button data-mode="jpeg" aria-pressed="true">vs its JPEG base</button>
+        <button data-mode="orig" aria-pressed="false">vs original</button>
+      </div>
+    </div>
+  </div>
+  <figcaption>Drag the slider. <strong>Left:</strong> the quality-1 JPEG that HyRES starts from (or the original). <strong>Right:</strong> HyRES, decoded from a real bitstream with the released Phase 1 weights. Numbers are per image. Shown as WebP at quality 95; the PNGs are in the repository.</figcaption>
+</section>
+
+<section>
+  <div class="card tldr">
+    <div class="kicker">TL;DR</div>
+    <ul>
+      <li><strong>JPEG first, neural second.</strong> Encode with JPEG at quality 1, then let a small learned codec encode only the residual (original minus decoded JPEG).</li>
+      <li><strong>Backward compatible.</strong> The JPEG part is a standard file; any viewer can show it without the neural decoder.</li>
+      <li><strong>Small and quick.</strong> 10.14M parameters, a two-pass checkerboard entropy model, and about 0.76 s per Kodak image on one GPU.</li>
+      <li><strong>Honest numbers.</strong> Results below are re-measured from real bitstreams. Doing so exposed three codec bugs, which are fixed and documented.</li>
+    </ul>
+  </div>
+  <div class="stats" id="stats"></div>
+</section>
+
+<!-- Method -->
+<section id="method">
+  <div class="kicker">Method</div>
+  <h2>Compress what JPEG gets wrong</h2>
+  <p class="section-sub">Standard codecs are fast and everywhere but fall apart at low bitrates. Learned codecs look far better but are big and slow. HyRES keeps JPEG as the base layer and spends neural effort only on the error.</p>
+
+  <figure class="card diagram">
+    <div class="scroll"><svg viewBox="0 0 1110 312" role="img" aria-labelledby="pipeTitle">
+      <title id="pipeTitle">HyRES pipeline: JPEG base layer plus learned residual layer</title>
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--text-3)"/></marker>
+      </defs>
+      <style>
+        .bx { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
+        .bx-j { fill: var(--jpeg-soft); stroke: var(--jpeg); stroke-width: 1.5; }
+        .bx-n { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+        .t { fill: var(--text); font: 600 15px Inter, sans-serif; }
+        .s { fill: var(--text-3); font: 400 12.5px Inter, sans-serif; }
+        .m { fill: var(--text-2); font: 500 13px "JetBrains Mono", monospace; }
+        .ln { stroke: var(--text-3); stroke-width: 1.6; fill: none; }
+        .rg { fill: var(--text-3); font: 600 12px Inter, sans-serif; letter-spacing: .12em; }
+      </style>
+      <!-- encoder -->
+      <rect class="bx" x="16" y="30" width="100" height="56" rx="10"/><text class="t" x="66" y="56" text-anchor="middle">Image</text><text class="m" x="66" y="74" text-anchor="middle">x</text>
+      <rect class="bx-j" x="170" y="30" width="150" height="56" rx="10"/><text class="t" x="245" y="56" text-anchor="middle">JPEG encode</text><text class="s" x="245" y="74" text-anchor="middle">quality 1, CPU</text>
+      <rect class="bx-j" x="170" y="118" width="150" height="56" rx="10"/><text class="t" x="245" y="144" text-anchor="middle">JPEG decode</text><text class="m" x="245" y="162" text-anchor="middle">x&#x2C7C;</text>
+      <circle class="bx" cx="245" cy="232" r="15"/><text class="t" x="245" y="237" text-anchor="middle">&minus;</text>
+      <rect class="bx-n" x="300" y="204" width="150" height="56" rx="10"/><text class="t" x="375" y="228" text-anchor="middle">Residual encoder</text><text class="s" x="375" y="246" text-anchor="middle">g<tspan dy="3" font-size="9.5">a</tspan><tspan dy="-3">, h</tspan><tspan dy="3" font-size="9.5">a</tspan><tspan dy="-3">, 2-pass coding</tspan></text>
+      <path class="ln" d="M116 58H168" marker-end="url(#arr)"/>
+      <path class="ln" d="M320 58H478" marker-end="url(#arr)"/>
+      <path class="ln" d="M245 86V116" marker-end="url(#arr)"/>
+      <path class="ln" d="M245 174V215" marker-end="url(#arr)"/>
+      <path class="ln" d="M66 86V232H228" marker-end="url(#arr)"/>
+      <path class="ln" d="M260 232H298" marker-end="url(#arr)"/>
+      <text class="m" x="245" y="270" text-anchor="middle">r = x &minus; x&#x2C7C;</text>
+      <path class="ln" d="M450 232H478" marker-end="url(#arr)"/>
+      <!-- bitstream -->
+      <rect class="bx" x="480" y="20" width="96" height="262" rx="12"/>
+      <rect class="bx-j" x="488" y="28" width="80" height="54" rx="7"/>
+      <text class="t" x="528" y="52" text-anchor="middle" style="font-size:13px">JPEG</text><text class="s" x="528" y="69" text-anchor="middle">0.20 bpp</text>
+      <rect class="bx-n" x="488" y="88" width="80" height="186" rx="7"/>
+      <text class="t" x="528" y="176" text-anchor="middle" style="font-size:13px">residual</text><text class="s" x="528" y="193" text-anchor="middle">1.36 bpp</text>
+      <text class="rg" x="528" y="302" text-anchor="middle">BITSTREAM</text>
+      <!-- decoder -->
+      <rect class="bx-j" x="626" y="30" width="150" height="56" rx="10"/><text class="t" x="701" y="56" text-anchor="middle">JPEG decode</text><text class="m" x="701" y="74" text-anchor="middle">x&#x2C7C;</text>
+      <rect class="bx-n" x="626" y="204" width="150" height="56" rx="10"/><text class="t" x="701" y="228" text-anchor="middle">Residual decoder</text><text class="s" x="701" y="246" text-anchor="middle">2-pass, g<tspan dy="3" font-size="9.5">s</tspan><tspan dy="-3"> &rarr; r&#x302;</tspan></text>
+      <path class="ln" d="M576 58H624" marker-end="url(#arr)"/>
+      <path class="ln" d="M576 232H624" marker-end="url(#arr)"/>
+      <circle class="bx" cx="826" cy="145" r="15"/><text class="t" x="826" y="150" text-anchor="middle">+</text>
+      <path class="ln" d="M776 58H826V128" marker-end="url(#arr)"/>
+      <path class="ln" d="M776 232H826V162" marker-end="url(#arr)"/>
+      <rect class="bx" x="870" y="117" width="118" height="56" rx="10" stroke-dasharray="5 4"/><text class="t" x="929" y="141" text-anchor="middle">Refinement</text><text class="s" x="929" y="159" text-anchor="middle">optional</text>
+      <path class="ln" d="M841 145H868" marker-end="url(#arr)"/>
+      <rect class="bx" x="1012" y="117" width="90" height="56" rx="10"/><text class="t" x="1057" y="141" text-anchor="middle">Output</text><text class="m" x="1057" y="159" text-anchor="middle">x&#x302;</text>
+      <path class="ln" d="M988 145H1010" marker-end="url(#arr)"/>
+      <text class="rg" x="233" y="302" text-anchor="middle">ENCODER</text>
+      <text class="rg" x="864" y="302" text-anchor="middle">DECODER</text>
+    </svg></div>
+    <figcaption><strong>Pipeline.</strong> The decoded JPEG is subtracted from the input, and only that residual goes through the neural codec. The decoder adds the decoded residual back. Bitrates are the Kodak averages of the released Phase 1 model; the residual part (y and z latents) dominates at this operating point.</figcaption>
+  </figure>
+
+  <h3>What the residual looks like</h3>
+  <p>At quality 1, JPEG keeps coarse 8&times;8 block averages and drops almost all detail and color. The residual holds everything else: edges, texture and color shifts. The codec has to reproduce it, not the whole image.</p>
+  <div class="row-imgs" id="residualRow"></div>
+  <figcaption>Residuals are amplified 2&times; around mid-gray. The decoded residual is what the neural codec reconstructs from 1.36 bpp on average.</figcaption>
+
+  <h3>Residual codec</h3>
+  <figure class="card diagram">
+    <div class="scroll"><svg viewBox="0 0 1120 330" role="img" aria-labelledby="codecTitle">
+      <title id="codecTitle">Residual codec: hyperprior autoencoder with a checkerboard context model</title>
+      <style>
+        .bx { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
+        .bx-n { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+        .t { fill: var(--text); font: 600 15px Inter, sans-serif; }
+        .s { fill: var(--text-3); font: 400 12.5px Inter, sans-serif; }
+        .m { fill: var(--text-2); font: 500 13px "JetBrains Mono", monospace; }
+        .ln { stroke: var(--text-3); stroke-width: 1.6; fill: none; }
+        .ln-d { stroke: var(--accent); stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+        .cb-a { fill: var(--accent); } .cb-n { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
+      </style>
+      <rect class="bx" x="10" y="40" width="70" height="50" rx="10"/><text class="m" x="45" y="63" text-anchor="middle">r</text><text class="s" x="45" y="80" text-anchor="middle">3&times;H&times;W</text>
+      <rect class="bx-n" x="108" y="20" width="204" height="90" rx="10"/><text class="t" x="210" y="48" text-anchor="middle">g<tspan dy="4" font-size="11">a</tspan><tspan dy="-4"> (analysis)</tspan></text>
+      <text class="s" x="210" y="70" text-anchor="middle">3&times; conv 5&times;5 stride 2, GDN</text><text class="s" x="210" y="88" text-anchor="middle">residual bottleneck, attention</text>
+      <rect class="bx" x="340" y="40" width="96" height="50" rx="10"/><text class="m" x="388" y="63" text-anchor="middle">y</text><text class="s" x="388" y="80" text-anchor="middle">192&times;H/8&times;W/8</text>
+      <rect class="bx-n" x="470" y="20" width="236" height="90" rx="10"/><text class="t" x="588" y="48" text-anchor="middle">Checkerboard coding</text>
+      <text class="s" x="588" y="70" text-anchor="middle">pass 1: anchors, in parallel</text><text class="s" x="588" y="88" text-anchor="middle">pass 2: non-anchors, given anchors</text>
+      <rect class="bx" x="736" y="40" width="70" height="50" rx="10"/><text class="m" x="771" y="70" text-anchor="middle">&#375;</text>
+      <rect class="bx-n" x="836" y="20" width="200" height="90" rx="10"/><text class="t" x="936" y="48" text-anchor="middle">g<tspan dy="4" font-size="11">s</tspan><tspan dy="-4"> (synthesis)</tspan></text>
+      <text class="s" x="936" y="70" text-anchor="middle">3&times; deconv stride 2, inverse GDN</text><text class="s" x="936" y="88" text-anchor="middle">residual bottleneck, attention</text>
+      <rect class="bx" x="1060" y="40" width="54" height="50" rx="10"/><text class="m" x="1087" y="70" text-anchor="middle">r&#x302;</text>
+      <path class="ln" d="M80 65H106" marker-end="url(#arr)"/><path class="ln" d="M312 65H338" marker-end="url(#arr)"/>
+      <path class="ln" d="M436 65H468" marker-end="url(#arr)"/><path class="ln" d="M706 65H734" marker-end="url(#arr)"/>
+      <path class="ln" d="M806 65H834" marker-end="url(#arr)"/><path class="ln" d="M1036 65H1058" marker-end="url(#arr)"/>
+      <!-- entropy parameters -->
+      <rect class="bx" x="470" y="134" width="236" height="50" rx="10"/><text class="t" x="588" y="156" text-anchor="middle" style="font-size:14px">Entropy parameters (&mu;, &sigma;)</text>
+      <text class="s" x="588" y="174" text-anchor="middle">hyperprior + masked 5&times;5 context</text>
+      <path class="ln" d="M560 134V112" marker-end="url(#arr)"/>
+      <path class="ln-d" d="M640 110V132" marker-end="url(#arr)"/><text class="s" x="648" y="126" style="fill:var(--accent)">anchors</text>
+      <!-- hyperprior -->
+      <rect class="bx" x="340" y="226" width="110" height="56" rx="10"/><text class="t" x="395" y="250" text-anchor="middle">h<tspan dy="4" font-size="11">a</tspan><tspan dy="-4"></tspan></text><text class="s" x="395" y="268" text-anchor="middle">2&times; conv stride 2</text>
+      <rect class="bx" x="478" y="230" width="92" height="50" rx="10"/><text class="m" x="524" y="253" text-anchor="middle">z</text><text class="s" x="524" y="270" text-anchor="middle">128&times;H/32</text>
+      <rect class="bx-n" x="598" y="226" width="140" height="56" rx="10"/><text class="t" x="668" y="250" text-anchor="middle">Factorized</text><text class="s" x="668" y="268" text-anchor="middle">entropy model (z bits)</text>
+      <rect class="bx" x="766" y="226" width="96" height="56" rx="10"/><text class="t" x="814" y="250" text-anchor="middle">h<tspan dy="4" font-size="11">s</tspan><tspan dy="-4"></tspan></text><text class="s" x="814" y="268" text-anchor="middle">2&times; deconv</text>
+      <path class="ln" d="M388 90V224" marker-end="url(#arr)"/><path class="ln" d="M450 255H476" marker-end="url(#arr)"/>
+      <path class="ln" d="M570 255H596" marker-end="url(#arr)"/><path class="ln" d="M738 255H764" marker-end="url(#arr)"/>
+      <path class="ln" d="M814 226V159H708" marker-end="url(#arr)"/>
+      <!-- checkerboard inset -->
+      <g transform="translate(930 168)">
+        <rect class="cb-a" x="0" y="0" width="22" height="22" rx="3"/><rect class="cb-n" x="26" y="0" width="22" height="22" rx="3"/><rect class="cb-a" x="52" y="0" width="22" height="22" rx="3"/><rect class="cb-n" x="78" y="0" width="22" height="22" rx="3"/>
+        <rect class="cb-n" x="0" y="26" width="22" height="22" rx="3"/><rect class="cb-a" x="26" y="26" width="22" height="22" rx="3"/><rect class="cb-n" x="52" y="26" width="22" height="22" rx="3"/><rect class="cb-a" x="78" y="26" width="22" height="22" rx="3"/>
+        <rect class="cb-a" x="0" y="52" width="22" height="22" rx="3"/><rect class="cb-n" x="26" y="52" width="22" height="22" rx="3"/><rect class="cb-a" x="52" y="52" width="22" height="22" rx="3"/><rect class="cb-n" x="78" y="52" width="22" height="22" rx="3"/>
+        <text class="s" x="50" y="96" text-anchor="middle">filled: pass 1, outlined: pass 2</text>
+        <text class="s" x="50" y="114" text-anchor="middle">2 steps, not one per latent</text>
+      </g>
+    </svg></div>
+    <figcaption><strong>Residual codec</strong> (10.14M parameters). A scale hyperprior (Ball&eacute; et al., 2018) predicts the mean and scale of every latent. Attention modules and residual bottleneck blocks follow Cheng et al. (2020). The checkerboard context model (He et al., 2021) decodes the latent in two parallel passes instead of one slow autoregressive pass.</figcaption>
+  </figure>
+
+  <h3>Training: start sharp, then trade bits away</h3>
+  <p>The loss is the usual rate-distortion objective, <span class="op">bpp + &lambda;&middot;MSE</span>. Early runs at three &lambda; values confirmed the trade-off (higher &lambda;, more bits, lower MSE). So training was split into six phases: a high &lambda; first, so the model learns to reconstruct, then &lambda; lowered step by step, each phase starting from the previous best checkpoint. Data: Mini-ImageNet (60k images, 7 GB), on a single A40.</p>
+  <div class="card" style="padding:16px 18px">
+    <div class="seg" id="phaseTabs" role="group" aria-label="Choose image for the phase strip" style="margin-bottom:14px;flex-wrap:wrap"></div>
+    <div class="strip" id="strip"></div>
+  </div>
+  <figcaption><strong>One crop, six operating points.</strong> The 160&times;160 crop is chosen automatically where JPEG's error is largest. The PSNR under each crop is for the whole image, measured on the reconstructions saved during the project. Lower &lambda; means fewer bits, and fine texture is the first thing to go.</figcaption>
+</section>
+
+<!-- Results -->
+<section id="results">
+  <div class="kicker">Results</div>
+  <h2>Rate-distortion on Kodak</h2>
+  <p class="section-sub">All 24 Kodak images at full resolution (768&times;512), PSNR averaged per image. Published codecs come from CompressAI's benchmark files. The JPEG curve was measured with the same TurboJPEG settings HyRES uses for its base layer.</p>
+  <div class="card chart" id="rdCard">
+    <div class="legend" id="rdLegend"></div>
+    <svg id="rd" viewBox="0 0 900 470" role="img" aria-label="PSNR versus bits per pixel on Kodak"></svg>
+    <div class="tooltip" id="rdTip"></div>
+  </div>
+  <figcaption><strong>Reading the chart.</strong> The filled blue point is the only HyRES result verified from a real bitstream. It sits about 2 dB above JPEG at the same bitrate, but ELIC reaches the same 37.4 dB at 0.83 bpp, about half the bits. Hollow points are the training-time estimates for all six phases. Their PSNR used center crops, and their bpp came from a rate estimate that was too low (see below), so the true points sit further right.</figcaption>
+
+  <div class="grid2" style="margin-top:28px">
+    <div>
+      <h3 style="margin-top:0">Speed</h3>
+      <div class="card chart" id="spCard">
+        <svg id="speed" viewBox="0 0 520 250" role="img" aria-label="Encode plus decode time per Kodak image"></svg>
+        <div class="tooltip" id="spTip"></div>
+      </div>
+      <figcaption>Encode + decode seconds per Kodak image, all models on the same A40 VM, measured during the project. HyRES encoding includes the CPU-side JPEG step.</figcaption>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Phase 1 at a glance</h3>
+      <div class="card" style="padding:6px 16px 10px">
+        <table id="glance"></table>
+      </div>
+      <figcaption>Kodak averages from the real bitstream. The bitrate splits into the JPEG base, the residual latent y and the hyper-latent z.</figcaption>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <details>
+      <summary>Per-image results (24 Kodak images)</summary>
+      <div class="table-scroll"><table id="perImage"></table></div>
+    </details>
+  </div>
+</section>
+
+<!-- Honest notes -->
+<section id="fixes">
+  <div class="kicker">Reproducibility</div>
+  <h2>What re-measuring found</h2>
+  <p class="section-sub">During the project, every number came from the model's training-time estimate. When we later decoded real bitstreams with the surviving weights, three bugs showed up. All are fixed in the repository, and none needs retraining.</p>
+  <div class="notes">
+    <div class="card note"><h4>1. Clamped residual</h4><p>The decoder clamped the residual to [0, 1]. Residuals are signed, so every negative correction was lost.</p><div class="delta">24.46 &rarr; 37.41 dB</div></div>
+    <div class="card note"><h4>2. Coding empty positions</h4><p>Each checkerboard pass coded the full tensor, including the other half's empty positions. Each pass now codes only its own positions.</p><div class="delta">1.878 &rarr; 1.563 bpp</div></div>
+    <div class="card note"><h4>3. Optimistic rate estimate</h4><p>Training scored each latent with the sum of both passes' parameters, a distribution no decoder has. It now uses the same parameters as the coder, giving a slight over-estimate (1.67 bpp).</p><div class="delta">est. 1.279 vs real 1.563 bpp</div></div>
+  </div>
+  <p style="margin-top:16px">Bug 3 also means every model trained so far optimized the wrong rate term. Retraining with the fixed estimate should move the whole curve, which makes it the most promising next step.</p>
+
+  <h3>Limitations</h3>
+  <ul class="plain">
+    <li>Only the Phase 1 weights survive, so phases 2 to 6 cannot be re-measured.</li>
+    <li>Kodak was also used to pick checkpoints during training, so it is not a fully held-out test set.</li>
+    <li>MSE-only training: reconstructions are smooth rather than perceptually sharp.</li>
+    <li>Image sides must be multiples of 32. Inference runs on CUDA or CPU, not Apple MPS.</li>
+  </ul>
+</section>
+
+<section id="journey">
+  <div class="kicker">Project history</div>
+  <h2>How it got here</h2>
+  <ol class="timeline" style="margin-top:18px">
+    <li><div class="when">Feb 2025</div><div class="what"><strong>Proposal.</strong> A content-aware hybrid codec: JPEG base plus a residual coded only in important regions, chosen by a learned importance map.</div></li>
+    <li><div class="when">Mar 2025</div><div class="what"><strong>Design.</strong> Survey of learned compression from 2018 to 2023. The importance map was dropped for a lightweight codec built for residuals: GDN, residual bottlenecks, attention, checkerboard context.</div></li>
+    <li><div class="when">Apr 2025</div><div class="what"><strong>First training runs.</strong> Three &lambda; and JPEG-quality settings confirmed the rate-distortion trade-off and led to the multi-phase schedule.</div></li>
+    <li><div class="when">May 2025</div><div class="what"><strong>Six phases and refinement.</strong> &lambda; from 0.045 down to 0.002, then a refinement network trained on the frozen final model.</div></li>
+    <li><div class="when">Oct 2026</div><div class="what"><strong>Re-measurement.</strong> Real-bitstream evaluation of the surviving weights, three codec fixes, and this page.</div></li>
+  </ol>
+</section>
+
+<section id="citation">
+  <div class="kicker">Citation</div>
+  <h2>BibTeX</h2>
+  <div class="code-wrap" style="margin-top:14px">
+<pre id="bibtex">@misc{hyres2025,
+  title        = {HyRES: Residual-Enhanced Hybrid Image Compression},
+  author       = {Tran, Minh Khang and Dinh, Hoang Dai},
+  year         = {2025},
+  howpublished = {\url{https://github.com/tmkhang1999/HyRES-Residual-Enhanced-Hybrid-Image-Compression}}
+}</pre>
+    <button class="copy" id="copyBib">Copy</button>
+  </div>
+</section>
+
+<footer>
+  Kodak images by Eastman Kodak, released for unrestricted use. Baseline rate-distortion data from
+  <a href="https://github.com/InterDigitalInc/CompressAI">CompressAI</a> (BSD 3-Clause Clear).
+  Every figure on this page is generated by <span class="op">tools/figures/</span> in the repository.
+</footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var IMG = "static/img/";
+  var NS = "http://www.w3.org/2000/svg";
+
+  // ---------- theme ----------
+  var root = document.documentElement;
+  try { var saved = localStorage.getItem("hyres-theme"); if (saved) root.setAttribute("data-theme", saved); } catch (e) {}
+  document.getElementById("themeToggle").addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("hyres-theme", next); } catch (e) {}
+    if (window.__redraw) window.__redraw();
+  });
+  function cssVar(name) { return getComputedStyle(root).getPropertyValue(name).trim(); }
+
+  function el(tag, attrs, parent) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  function fmt(v, d) { return Number(v).toFixed(d); }
+  function isPortrait(id) { return id === "kodim18" || id === "kodim19"; }
+
+  document.getElementById("copyBib").addEventListener("click", function () {
+    var btn = this, text = document.getElementById("bibtex").textContent;
+    var done = function () { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { btn.textContent = "Select and copy"; });
+    else btn.textContent = "Select and copy";
+  });
+
+  fetch("static/data/results.json").then(function (r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }).then(init).catch(function (err) {
+    var msg = "Could not load static/data/results.json (" + err.message + "). Serve this folder over HTTP, e.g. python -m http.server, instead of opening the file directly.";
+    console.error(msg);
+    document.getElementById("stats").innerHTML = '<div class="card stat" style="grid-column:1/-1"><div class="k">' + msg + "</div></div>";
+  });
+
+  function init(D) {
+    var P1 = D.hyres_phase1, avg = P1.average;
+    var byId = {};
+    P1.per_image.forEach(function (r) { byId[r.id] = r; });
+
+    // ---------- stats ----------
+    var jpegAt = interp(D.jpeg.points, avg.bpp);
+    var stats = [
+      ["+" + fmt(avg.psnr - avg.jpeg_psnr, 1), " dB", "over its own JPEG base layer (" + fmt(avg.jpeg_psnr, 1) + " &rarr; " + fmt(avg.psnr, 1) + " dB)"],
+      ["+" + fmt(avg.psnr - jpegAt, 1), " dB", "over plain JPEG at the same " + fmt(avg.bpp, 2) + " bpp"],
+      [fmt(P1.params_m, 2), "M", "parameters in the residual codec"],
+      ["0.76", " s", "encode + decode per Kodak image on one A40"]
+    ];
+    document.getElementById("stats").innerHTML = stats.map(function (s) {
+      return '<div class="card stat"><div class="v">' + s[0] + "<small>" + s[1] + '</small></div><div class="k">' + s[2] + "</div></div>";
+    }).join("");
+
+    // ---------- comparison viewer ----------
+    var cmp = document.getElementById("cmp"), range = document.getElementById("cmpRange");
+    var state = { id: D.showcase[0], mode: "jpeg" };
+    var thumbs = document.getElementById("thumbs");
+    D.showcase.forEach(function (id) {
+      var b = document.createElement("button");
+      b.setAttribute("aria-label", id); b.setAttribute("aria-pressed", id === state.id ? "true" : "false");
+      b.innerHTML = '<img src="' + IMG + "compare/" + id + '_original.webp" alt="" loading="lazy">';
+      b.addEventListener("click", function () { state.id = id; renderCmp(); });
+      thumbs.appendChild(b);
+    });
+    document.querySelectorAll(".seg [data-mode]").forEach(function (b) {
+      b.addEventListener("click", function () { state.mode = b.getAttribute("data-mode"); renderCmp(); });
+    });
+    function setPos(p) { cmp.style.setProperty("--pos", p + "%"); range.value = p; }
+    range.addEventListener("input", function () { setPos(range.value); });
+    function renderCmp() {
+      var r = byId[state.id];
+      cmp.classList.toggle("portrait", isPortrait(state.id));
+      var left = state.mode === "jpeg" ? "jpeg" : "original";
+      document.getElementById("cmpTop").src = IMG + "compare/" + state.id + "_" + left + ".webp";
+      document.getElementById("cmpTop").alt = (left === "jpeg" ? "JPEG quality 1" : "Original") + ", " + state.id;
+      document.getElementById("cmpBottom").src = IMG + "compare/" + state.id + "_hyres.webp";
+      document.getElementById("cmpBottom").alt = "HyRES reconstruction, " + state.id;
+      document.getElementById("tagL").innerHTML = left === "jpeg"
+        ? "<b>JPEG q1</b><br>" + fmt(r.jpeg_bpp, 2) + " bpp &middot; " + fmt(r.jpeg_psnr, 1) + " dB"
+        : "<b>Original</b><br>lossless";
+      document.getElementById("tagR").innerHTML = "<b>HyRES</b><br>" + fmt(r.bpp, 2) + " bpp &middot; " + fmt(r.psnr, 1) + " dB";
+      thumbs.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("aria-label") === state.id ? "true" : "false"); });
+      document.querySelectorAll(".seg [data-mode]").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-mode") === state.mode ? "true" : "false"); });
+    }
+    setPos(50); renderCmp();
+
+    // ---------- residual row ----------
+    var rid = D.showcase[0];
+    document.getElementById("residualRow").innerHTML = [
+      ["compare/" + rid + "_original", "Original x"],
+      ["compare/" + rid + "_jpeg", "JPEG q1 x&#x2C7C; (" + fmt(byId[rid].jpeg_bpp, 2) + " bpp)"],
+      ["residual/" + rid + "_residual", "Residual r = x &minus; x&#x2C7C;"],
+      ["residual/" + rid + "_residual_hat", "Decoded residual r&#x302;"]
+    ].map(function (c) {
+      return '<figure><img src="' + IMG + c[0] + '.webp" alt="' + c[1].replace(/<[^>]+>|&[^;]+;/g, "") + '" loading="lazy"><figcaption>' + c[1] + "</figcaption></figure>";
+    }).join("");
+
+    // ---------- phase strip ----------
+    var tabs = document.getElementById("phaseTabs"), strip = document.getElementById("strip");
+    var lambdas = D.reported_phases.map(function (p) { return p.lmbda; });
+    function renderStrip(id) {
+      var m = D.phases_measured[id];
+      var cells = [["original", "Original", ""], ["jpeg", "JPEG q1", fmt(m.jpeg_psnr, 1) + " dB"]];
+      m.phases.forEach(function (ps, k) { cells.push(["p" + (k + 1), "&lambda; " + lambdas[k], fmt(ps, 1) + " dB"]); });
+      strip.innerHTML = cells.map(function (c) {
+        return '<figure><img src="' + IMG + "phases/" + id + "_" + c[0] + '.webp" alt="' + c[1].replace(/&[^;]+;/g, "lambda") + '" loading="lazy"><figcaption><b>' + c[1] + "</b>" + (c[2] || "&nbsp;") + "</figcaption></figure>";
+      }).join("");
+      tabs.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.textContent === id ? "true" : "false"); });
+    }
+    D.showcase.forEach(function (id) {
+      var b = document.createElement("button"); b.textContent = id;
+      b.addEventListener("click", function () { renderStrip(id); });
+      tabs.appendChild(b);
+    });
+    renderStrip(D.showcase[0]);
+
+    // ---------- tables ----------
+    document.getElementById("glance").innerHTML =
+      "<tr><th>Quantity</th><th>Value</th></tr>" +
+      [["Total bitrate", fmt(avg.bpp, 3) + " bpp"],
+       ["&nbsp;&nbsp;JPEG base", fmt(avg.jpeg_bpp, 3) + " bpp"],
+       ["&nbsp;&nbsp;Residual (y + z)", fmt(avg.bpp - avg.jpeg_bpp, 3) + " bpp"],
+       ["PSNR", fmt(avg.psnr, 2) + " dB"],
+       ["MS-SSIM", fmt(avg.ms_ssim, 3)],
+       ["JPEG base alone", fmt(avg.jpeg_psnr, 2) + " dB"],
+       ["&lambda; / epoch", P1.lmbda + " / " + P1.epoch]].map(function (r) {
+        return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>";
+      }).join("");
+    document.getElementById("perImage").innerHTML =
+      "<tr><th>Image</th><th>JPEG bpp</th><th>JPEG PSNR</th><th>HyRES bpp</th><th>HyRES PSNR</th><th>Gain</th><th>MS-SSIM</th></tr>" +
+      P1.per_image.map(function (r) {
+        return "<tr><td>" + r.id + "</td><td>" + fmt(r.jpeg_bpp, 3) + "</td><td>" + fmt(r.jpeg_psnr, 2) + "</td><td>" + fmt(r.bpp, 3) +
+          "</td><td>" + fmt(r.psnr, 2) + "</td><td>+" + fmt(r.psnr - r.jpeg_psnr, 2) + "</td><td>" + fmt(r.ms_ssim, 4) + "</td></tr>";
+      }).join("") +
+      '<tr class="hl"><td>Average</td><td>' + fmt(avg.jpeg_bpp, 3) + "</td><td>" + fmt(avg.jpeg_psnr, 2) + "</td><td>" + fmt(avg.bpp, 3) +
+      "</td><td>" + fmt(avg.psnr, 2) + "</td><td>+" + fmt(avg.psnr - avg.jpeg_psnr, 2) + "</td><td>" + fmt(avg.ms_ssim, 4) + "</td></tr>";
+
+    // ---------- charts ----------
+    window.__redraw = function () { drawRD(D); drawSpeed(D); };
+    window.__redraw();
+    var rt; addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(window.__redraw, 150); });
+  }
+
+  function interp(pts, x) {
+    for (var i = 1; i < pts.length; i++) {
+      if (pts[i][0] >= x) {
+        var a = pts[i - 1], b = pts[i];
+        return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]);
+      }
+    }
+    return pts[pts.length - 1][1];
+  }
+
+  // Shared hover tooltip: nearest point within a radius.
+  function attachHover(svg, tip, card, points, toScreen) {
+    function hide() { tip.style.opacity = 0; if (svg.__hl) { svg.__hl.remove(); svg.__hl = null; } }
+    svg.onmousemove = function (ev) {
+      var pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+      var p = pt.matrixTransform(svg.getScreenCTM().inverse());
+      var best = null, bd = 28 * 28;
+      points.forEach(function (q) { var dx = q.x - p.x, dy = q.y - p.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = q; } });
+      if (!best) return hide();
+      if (svg.__hl) svg.__hl.remove();
+      svg.__hl = el("circle", { cx: best.x, cy: best.y, r: 7, fill: "none", stroke: cssVar("--text"), "stroke-width": 1.5, "pointer-events": "none" }, svg);
+      tip.innerHTML = best.html;
+      var cr = card.getBoundingClientRect();
+      var left = ev.clientX - cr.left + 14, top = ev.clientY - cr.top - 12;
+      if (left + 220 > cr.width) left = ev.clientX - cr.left - 14 - tip.offsetWidth;
+      tip.style.left = left + "px"; tip.style.top = top + "px"; tip.style.opacity = 1;
+    };
+    svg.onmouseleave = hide;
+  }
+
+  function drawRD(D) {
+    var svg = document.getElementById("rd"); svg.innerHTML = "";
+    var narrow = document.getElementById("rdCard").clientWidth < 620;
+    var W = narrow ? 560 : 900, H = narrow ? 440 : 470, fs = narrow ? 13 : 12;
+    var m = { l: narrow ? 46 : 58, r: narrow ? 14 : 24, t: 12, b: 48 };
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    var X0 = 0, X1 = 2.0, Y0 = 20, Y1 = 42;
+    var sx = function (v) { return m.l + (v - X0) / (X1 - X0) * (W - m.l - m.r); };
+    var sy = function (v) { return H - m.b - (v - Y0) / (Y1 - Y0) * (H - m.t - m.b); };
+    var c = { grid: cssVar("--grid"), t2: cssVar("--text-2"), t3: cssVar("--text-3"), acc: cssVar("--accent"), jpg: cssVar("--jpeg"),
+              b1: cssVar("--base-1"), b2: cssVar("--base-2"), surf: cssVar("--surface") };
+    var clip = el("clipPath", { id: "rdclip" }, el("defs", {}, svg));
+    el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b }, clip);
+    for (var y = Y0; y <= Y1; y += 2) {
+      el("line", { x1: m.l, x2: W - m.r, y1: sy(y), y2: sy(y), stroke: c.grid }, svg);
+      el("text", { x: m.l - 8, y: sy(y) + 4, "text-anchor": "end", "font-size": fs, fill: c.t3 }, svg).textContent = y;
+    }
+    for (var x = 0; x <= X1 + 1e-9; x += (narrow ? 0.5 : 0.25)) {
+      el("line", { x1: sx(x), x2: sx(x), y1: m.t, y2: H - m.b, stroke: c.grid }, svg);
+      el("text", { x: sx(x), y: H - m.b + 20, "text-anchor": "middle", "font-size": fs, fill: c.t3 }, svg).textContent = String(+x.toFixed(2));
+    }
+    el("text", { x: (m.l + W - m.r) / 2, y: H - 6, "text-anchor": "middle", "font-size": fs + 1, fill: c.t2, "font-weight": 500 }, svg).textContent = "Bits per pixel (bpp)";
+    el("text", { x: 14, y: (m.t + H - m.b) / 2, "text-anchor": "middle", "font-size": fs + 1, fill: c.t2, "font-weight": 500, transform: "rotate(-90 14 " + (m.t + H - m.b) / 2 + ")" }, svg).textContent = "PSNR (dB)";
+
+    var g = el("g", { "clip-path": "url(#rdclip)" }, svg);
+    var hover = [];
+    function path(pts) { return pts.map(function (p, i) { return (i ? "L" : "M") + sx(p[0]).toFixed(1) + " " + sy(p[1]).toFixed(1); }).join(""); }
+
+    // Reference codecs in recessive gray, each named where its curve ends.
+    var refs = D.baselines.filter(function (b) { return /ELIC|Cheng 2020|Balle|VTM/.test(b.name); });
+    var tags = [];
+    refs.forEach(function (b) {
+      var std = /VTM/.test(b.name), col = std ? c.b2 : c.b1;
+      el("path", { d: path(b.points), fill: "none", stroke: col, "stroke-width": 1.5, "stroke-dasharray": std ? "5 4" : "" }, g);
+      var vis = b.points.filter(function (p) { return p[0] <= X1; });
+      vis.forEach(function (p) { hover.push({ x: sx(p[0]), y: sy(p[1]), html: "<b>" + b.name + "</b><br>" + fmt(p[0], 3) + " bpp &middot; " + fmt(p[1], 2) + " dB" }); });
+      var e = vis[vis.length - 1];
+      tags.push({ x: sx(e[0]), y: sy(e[1]), text: b.name });
+    });
+    // Labels sit just past each curve end; nudge vertically so they never overlap.
+    tags.sort(function (a, b) { return a.y - b.y; });
+    for (var i = 1; i < tags.length; i++) if (tags[i].y - tags[i - 1].y < fs + 3) tags[i].y = tags[i - 1].y + fs + 3;
+    tags.forEach(function (t) {
+      var right = t.x + 8 + t.text.length * fs * 0.55 < W - m.r;
+      el("text", { x: right ? t.x + 8 : t.x - 8, y: t.y + 4, "text-anchor": right ? "start" : "end", "font-size": fs, fill: c.t3,
+                   stroke: c.surf, "stroke-width": 3, "paint-order": "stroke" }, svg).textContent = t.text;
+    });
+
+    // JPEG with the HyRES base-layer settings.
+    el("path", { d: path(D.jpeg.points), fill: "none", stroke: c.jpg, "stroke-width": 2 }, g);
+    D.jpeg.points.forEach(function (p, i) {
+      if (p[0] > X1) return;
+      el("circle", { cx: sx(p[0]), cy: sy(p[1]), r: 3.5, fill: c.jpg, stroke: c.surf, "stroke-width": 1.5 }, g);
+      hover.push({ x: sx(p[0]), y: sy(p[1]), html: "<b>JPEG q" + D.jpeg.quality[i] + "</b><br>" + fmt(p[0], 3) + " bpp &middot; " + fmt(p[1], 2) + " dB" });
+    });
+    el("text", { x: sx(1.97), y: sy(interp(D.jpeg.points, 1.97)) + 20, "text-anchor": "end", "font-size": fs, fill: c.jpg, "font-weight": 600 }, svg).textContent = "JPEG";
+
+    // HyRES phases as reported during the project (training-time estimates), hollow.
+    var rp = D.reported_phases.map(function (p) { return [p.bpp_est, p.psnr]; }).sort(function (a, b) { return a[0] - b[0]; });
+    el("path", { d: path(rp), fill: "none", stroke: c.acc, "stroke-width": 1.5, "stroke-dasharray": "2 4", opacity: 0.8 }, g);
+    D.reported_phases.forEach(function (p) {
+      el("circle", { cx: sx(p.bpp_est), cy: sy(p.psnr), r: 5, fill: c.surf, stroke: c.acc, "stroke-width": 2 }, g);
+      hover.push({ x: sx(p.bpp_est), y: sy(p.psnr), html: "<b>HyRES phase " + p.phase + "</b> (&lambda; " + p.lmbda + ")<br>estimated " + fmt(p.bpp_est, 3) + " bpp &middot; " + fmt(p.psnr, 2) + " dB<br>training-time estimate, center crops" });
+    });
+
+    // HyRES Phase 1, verified from a real bitstream.
+    var a = D.hyres_phase1.average, jAt = interp(D.jpeg.points, a.bpp);
+    var jx = sx(a.bpp), jyJ = sy(jAt), jyH = sy(a.psnr);
+    el("line", { x1: jx, x2: jx, y1: jyJ - 5, y2: jyH + 10, stroke: c.acc, "stroke-width": 1.5 }, g);
+    el("text", { x: jx + 8, y: (jyJ + jyH) / 2 + 4, "font-size": fs, fill: c.acc, "font-weight": 600 }, svg).textContent = "+" + fmt(a.psnr - jAt, 1) + " dB";
+    el("circle", { cx: jx, cy: jyH, r: 8, fill: c.acc, stroke: c.surf, "stroke-width": 2.5 }, g);
+    el("text", { x: jx + 4, y: jyH - 14, "text-anchor": "middle", "font-size": fs + 1, fill: c.acc, "font-weight": 700, stroke: c.surf, "stroke-width": 3, "paint-order": "stroke" }, svg).textContent = "HyRES";
+    hover.push({ x: jx, y: jyH, html: "<b>HyRES phase 1, real bitstream</b><br>" + fmt(a.bpp, 3) + " bpp &middot; " + fmt(a.psnr, 2) + " dB<br>JPEG at same bpp: " + fmt(jAt, 2) + " dB" });
+
+    document.getElementById("rdLegend").innerHTML =
+      '<span><i class="dot" style="background:' + c.acc + '"></i>HyRES, real bitstream</span>' +
+      '<span><i class="ring" style="border-color:' + c.acc + '"></i>HyRES phases, training-time estimate</span>' +
+      '<span><i style="border-color:' + c.jpg + '"></i>JPEG (same settings as the base layer)</span>' +
+      '<span><i style="border-color:' + c.b1 + '"></i>Learned codecs</span>' +
+      '<span><i style="border-color:' + c.b2 + ';border-top-style:dashed"></i>VVC (VTM)</span>';
+    attachHover(svg, document.getElementById("rdTip"), document.getElementById("rdCard"), hover);
+  }
+
+  function drawSpeed(D) {
+    var svg = document.getElementById("speed"); svg.innerHTML = "";
+    var rows = D.timing.slice().sort(function (a, b) { return (a.enc + a.dec) - (b.enc + b.dec); });
+    var W = 520, m = { l: 170, r: 56, t: 6 }, bh = 26, gap = 18;
+    var max = 11, sx = function (v) { return m.l + v / max * (W - m.l - m.r); };
+    var c = { grid: cssVar("--grid"), t2: cssVar("--text-2"), t3: cssVar("--text-3"), acc: cssVar("--accent"), b2: cssVar("--base-2"), txt: cssVar("--text") };
+    var H = m.t + rows.length * (bh + gap) + 24;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    for (var v = 0; v <= 10; v += 2) {
+      el("line", { x1: sx(v), x2: sx(v), y1: m.t, y2: H - 24, stroke: c.grid }, svg);
+      el("text", { x: sx(v), y: H - 6, "text-anchor": "middle", "font-size": 12, fill: c.t3 }, svg).textContent = v + " s";
+    }
+    var hover = [];
+    rows.forEach(function (r, i) {
+      var y = m.t + i * (bh + gap), tot = r.enc + r.dec, ours = /HyRES/.test(r.model);
+      el("text", { x: m.l - 10, y: y + bh / 2 + 4, "text-anchor": "end", "font-size": 13, fill: ours ? c.txt : c.t2, "font-weight": ours ? 600 : 400 }, svg).textContent = r.model;
+      var w = Math.max(sx(tot) - m.l, 4);
+      el("path", { d: "M" + m.l + " " + y + "h" + (w - 4) + "a4 4 0 0 1 4 4v" + (bh - 8) + "a4 4 0 0 1 -4 4h" + (-(w - 4)) + "z", fill: ours ? c.acc : c.b2 }, svg);
+      el("text", { x: m.l + w + 6, y: y + bh / 2 + 4, "font-size": 12.5, fill: ours ? c.txt : c.t2, "font-weight": ours ? 600 : 400 }, svg).textContent = fmt(tot, 2) + " s";
+      hover.push({ x: m.l + w / 2, y: y + bh / 2, html: "<b>" + r.model + "</b><br>encode " + fmt(r.enc, 3) + " s &middot; decode " + fmt(r.dec, 3) + " s" + (r.params_m ? "<br>" + r.params_m + "M parameters" : "") });
+    });
+    attachHover(svg, document.getElementById("spTip"), document.getElementById("spCard"), hover);
+  }
+})();
+</script>
+</body>
+</html>
