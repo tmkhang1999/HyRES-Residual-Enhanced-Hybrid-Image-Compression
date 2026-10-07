@@ -5,7 +5,7 @@ HyRES compresses an image with a very low-quality JPEG, then uses a small neural
 Authors: Minh Khang Tran, Dinh Hoang Dai. Project page: [tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/) (served from `docs/`).
 
 <p align="center">
-  <img src="assets/pipeline_idea.png" alt="HyRES pipeline concept" width="80%">
+  <img src="docs/static/fig/hyres_pipeline.svg" alt="HyRES pipeline: quality-1 JPEG plus an entropy-coded residual" width="720">
 </p>
 
 ## Contents
@@ -28,23 +28,14 @@ Authors: Minh Khang Tran, Dinh Hoang Dai. Project page: [tmkhang1999.github.io/H
 
 ## How it works
 
-```
-Encoder                                              Decoder
-image --> JPEG (quality 1) --> JPEG bytes ---+---------> decode JPEG ----+
-  |                                          |                           (+) --> refine --> output
-  +--(minus decoded JPEG)--> residual --> neural residual codec --> decode residual
-```
+The figure at the top shows the full pipeline with real Phase 1 outputs:
 
 1. Compress the image with JPEG at quality 1 (TurboJPEG, runs on CPU).
 2. Decode that JPEG and subtract it from the original to get the residual map.
 3. Compress the residual with a lightweight learned codec (10.14M parameters).
-4. Store both bitstreams in one package. The decoder adds the decoded residual to the decoded JPEG and applies a small refinement network that removes leftover blocking.
+4. Store both bitstreams in one package. The decoder adds the decoded residual to the decoded JPEG. An optional refinement network can then remove leftover blocking; the released Phase 1 weights do not include one.
 
 Total bitrate is `JPEG bpp + residual-latent bpp (y) + hyper-latent bpp (z)`. If the neural part is skipped, the JPEG alone is still a valid image.
-
-<p align="center">
-  <img src="assets/pipeline_with_data.png" alt="HyRES pipeline with example data" width="85%">
-</p>
 
 ### Residual codec
 
@@ -55,8 +46,10 @@ The codec is a hyperprior autoencoder (`N=128`, `M=192`) combining pieces from t
 - A checkerboard context model that decodes the latent in 2 parallel passes instead of one slow autoregressive pass (He et al., 2021).
 
 <p align="center">
-  <img src="assets/compressed_model.png" alt="Residual codec architecture" width="50%">
+  <img src="docs/static/fig/hyres_codec.svg" alt="Residual codec: hyperprior autoencoder with checkerboard context model" width="620">
 </p>
+
+Blue: learned modules. Teal: quantized latents being arithmetic-coded (AE) and decoded (AD). RBB: residual bottleneck block. The layer lists match `models/checkerboard.py`.
 
 ### Refinement network
 
@@ -149,12 +142,11 @@ src/
   utils/                   Datasets, training loops, optimizers, checkpoints
 scripts/                   Thin shell wrappers, one per step (see below)
 tools/figures/             Scripts that build the project page figures and data
-docs/                      Project page (GitHub Pages)
+docs/                      Project page (GitHub Pages); static/fig/ holds the paper figures (SVG)
 data/
   test/                    Kodak images (24 PNGs), used for validation and evaluation
   train/                   Mini-ImageNet images (downloaded, not tracked)
   reorganize.py            Flattens the downloaded dataset into data/train
-assets/                    Figures used in this README
 checkpoint/                Training outputs (not tracked)
 ```
 
@@ -227,6 +219,7 @@ This writes reconstructions, JPEG and residual visualizations, and `metrics.csv`
 bash scripts/evaluate.sh checkpoint/inference/phase1_lambda0.045.pth.tar data/test output/phase1
 python tools/figures/jpeg_curve.py
 python tools/figures/make_figures.py --eval-dir output/phase1 --phase-dir checkpoint/1B
+python tools/figures/make_diagrams.py --eval-dir output/phase1   # Fig. 1 and Fig. 2 (SVG)
 python -m http.server 8000 --directory docs   # preview at http://localhost:8000
 ```
 

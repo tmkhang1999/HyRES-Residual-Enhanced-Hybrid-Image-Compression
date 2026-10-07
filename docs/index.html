@@ -115,8 +115,9 @@ figure { margin: 0; }
 figcaption { font-size: 14px; color: var(--text-3); margin-top: 10px; line-height: 1.55; }
 figcaption strong { color: var(--text-2); }
 .diagram { padding: 18px; }
-.diagram .scroll { overflow-x: auto; }
-.diagram svg { display: block; width: 100%; min-width: 640px; height: auto; }
+/* Figures are print-style plates: always white, like a paper figure, in both themes. */
+.diagram .plate { background: #ffffff; border-radius: 8px; padding: 12px; overflow-x: auto; }
+.diagram .plate img { display: block; width: 100%; max-width: 720px; min-width: 520px; height: auto; margin: 0 auto; }
 
 /* Comparison viewer */
 .viewer { padding: 14px; }
@@ -306,58 +307,8 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
   <p class="section-sub">Standard codecs are fast and everywhere but fall apart at low bitrates. Learned codecs look far better but are big and slow. HyRES keeps JPEG as the base layer and spends neural effort only on the error.</p>
 
   <figure class="card diagram">
-    <div class="scroll"><svg viewBox="0 0 1110 312" role="img" aria-labelledby="pipeTitle">
-      <title id="pipeTitle">HyRES pipeline: JPEG base layer plus learned residual layer</title>
-      <defs>
-        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--text-3)"/></marker>
-      </defs>
-      <style>
-        .bx { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
-        .bx-j { fill: var(--jpeg-soft); stroke: var(--jpeg); stroke-width: 1.5; }
-        .bx-n { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
-        .t { fill: var(--text); font: 600 15px Inter, sans-serif; }
-        .s { fill: var(--text-3); font: 400 12.5px Inter, sans-serif; }
-        .m { fill: var(--text-2); font: 500 13px "JetBrains Mono", monospace; }
-        .ln { stroke: var(--text-3); stroke-width: 1.6; fill: none; }
-        .rg { fill: var(--text-3); font: 600 12px Inter, sans-serif; letter-spacing: .12em; }
-      </style>
-      <!-- encoder -->
-      <rect class="bx" x="16" y="30" width="100" height="56" rx="10"/><text class="t" x="66" y="56" text-anchor="middle">Image</text><text class="m" x="66" y="74" text-anchor="middle">x</text>
-      <rect class="bx-j" x="170" y="30" width="150" height="56" rx="10"/><text class="t" x="245" y="56" text-anchor="middle">JPEG encode</text><text class="s" x="245" y="74" text-anchor="middle">quality 1, CPU</text>
-      <rect class="bx-j" x="170" y="118" width="150" height="56" rx="10"/><text class="t" x="245" y="144" text-anchor="middle">JPEG decode</text><text class="m" x="245" y="162" text-anchor="middle">x&#x2C7C;</text>
-      <circle class="bx" cx="245" cy="232" r="15"/><text class="t" x="245" y="237" text-anchor="middle">&minus;</text>
-      <rect class="bx-n" x="300" y="204" width="150" height="56" rx="10"/><text class="t" x="375" y="228" text-anchor="middle">Residual encoder</text><text class="s" x="375" y="246" text-anchor="middle">g<tspan dy="3" font-size="9.5">a</tspan><tspan dy="-3">, h</tspan><tspan dy="3" font-size="9.5">a</tspan><tspan dy="-3">, 2-pass coding</tspan></text>
-      <path class="ln" d="M116 58H168" marker-end="url(#arr)"/>
-      <path class="ln" d="M320 58H478" marker-end="url(#arr)"/>
-      <path class="ln" d="M245 86V116" marker-end="url(#arr)"/>
-      <path class="ln" d="M245 174V215" marker-end="url(#arr)"/>
-      <path class="ln" d="M66 86V232H228" marker-end="url(#arr)"/>
-      <path class="ln" d="M260 232H298" marker-end="url(#arr)"/>
-      <text class="m" x="245" y="270" text-anchor="middle">r = x &minus; x&#x2C7C;</text>
-      <path class="ln" d="M450 232H478" marker-end="url(#arr)"/>
-      <!-- bitstream -->
-      <rect class="bx" x="480" y="20" width="96" height="262" rx="12"/>
-      <rect class="bx-j" x="488" y="28" width="80" height="54" rx="7"/>
-      <text class="t" x="528" y="52" text-anchor="middle" style="font-size:13px">JPEG</text><text class="s" x="528" y="69" text-anchor="middle">0.20 bpp</text>
-      <rect class="bx-n" x="488" y="88" width="80" height="186" rx="7"/>
-      <text class="t" x="528" y="176" text-anchor="middle" style="font-size:13px">residual</text><text class="s" x="528" y="193" text-anchor="middle">1.36 bpp</text>
-      <text class="rg" x="528" y="302" text-anchor="middle">BITSTREAM</text>
-      <!-- decoder -->
-      <rect class="bx-j" x="626" y="30" width="150" height="56" rx="10"/><text class="t" x="701" y="56" text-anchor="middle">JPEG decode</text><text class="m" x="701" y="74" text-anchor="middle">x&#x2C7C;</text>
-      <rect class="bx-n" x="626" y="204" width="150" height="56" rx="10"/><text class="t" x="701" y="228" text-anchor="middle">Residual decoder</text><text class="s" x="701" y="246" text-anchor="middle">2-pass, g<tspan dy="3" font-size="9.5">s</tspan><tspan dy="-3"> &rarr; r&#x302;</tspan></text>
-      <path class="ln" d="M576 58H624" marker-end="url(#arr)"/>
-      <path class="ln" d="M576 232H624" marker-end="url(#arr)"/>
-      <circle class="bx" cx="826" cy="145" r="15"/><text class="t" x="826" y="150" text-anchor="middle">+</text>
-      <path class="ln" d="M776 58H826V128" marker-end="url(#arr)"/>
-      <path class="ln" d="M776 232H826V162" marker-end="url(#arr)"/>
-      <rect class="bx" x="870" y="117" width="118" height="56" rx="10" stroke-dasharray="5 4"/><text class="t" x="929" y="141" text-anchor="middle">Refinement</text><text class="s" x="929" y="159" text-anchor="middle">optional</text>
-      <path class="ln" d="M841 145H868" marker-end="url(#arr)"/>
-      <rect class="bx" x="1012" y="117" width="90" height="56" rx="10"/><text class="t" x="1057" y="141" text-anchor="middle">Output</text><text class="m" x="1057" y="159" text-anchor="middle">x&#x302;</text>
-      <path class="ln" d="M988 145H1010" marker-end="url(#arr)"/>
-      <text class="rg" x="233" y="302" text-anchor="middle">ENCODER</text>
-      <text class="rg" x="864" y="302" text-anchor="middle">DECODER</text>
-    </svg></div>
-    <figcaption><strong>Pipeline.</strong> The decoded JPEG is subtracted from the input, and only that residual goes through the neural codec. The decoder adds the decoded residual back. Bitrates are the Kodak averages of the released Phase 1 model; the residual part (y and z latents) dominates at this operating point.</figcaption>
+    <div class="plate"><img src="static/fig/hyres_pipeline.svg" alt="HyRES pipeline: the encoder sends a quality-1 JPEG plus an entropy-coded residual; the decoder adds the decoded residual back to the decoded JPEG." width="656" height="500"></div>
+    <figcaption><strong>Figure 1. Pipeline.</strong> The decoded JPEG <em>x<sub>J</sub></em> is subtracted from the input, and only the residual <em>r</em> goes through the learned codec. The decoder adds the decoded residual back. Thumbnails are real Phase 1 outputs on kodim23 (residuals amplified 2&times;). Bitrates are Kodak averages; the residual latents dominate at this operating point. The released weights include no refinement network.</figcaption>
   </figure>
 
   <h3>What the residual looks like</h3>
@@ -367,54 +318,8 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
 
   <h3>Residual codec</h3>
   <figure class="card diagram">
-    <div class="scroll"><svg viewBox="0 0 1120 330" role="img" aria-labelledby="codecTitle">
-      <title id="codecTitle">Residual codec: hyperprior autoencoder with a checkerboard context model</title>
-      <style>
-        .bx { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
-        .bx-n { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
-        .t { fill: var(--text); font: 600 15px Inter, sans-serif; }
-        .s { fill: var(--text-3); font: 400 12.5px Inter, sans-serif; }
-        .m { fill: var(--text-2); font: 500 13px "JetBrains Mono", monospace; }
-        .ln { stroke: var(--text-3); stroke-width: 1.6; fill: none; }
-        .ln-d { stroke: var(--accent); stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
-        .cb-a { fill: var(--accent); } .cb-n { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
-      </style>
-      <rect class="bx" x="10" y="40" width="70" height="50" rx="10"/><text class="m" x="45" y="63" text-anchor="middle">r</text><text class="s" x="45" y="80" text-anchor="middle">3&times;H&times;W</text>
-      <rect class="bx-n" x="108" y="20" width="204" height="90" rx="10"/><text class="t" x="210" y="48" text-anchor="middle">g<tspan dy="4" font-size="11">a</tspan><tspan dy="-4"> (analysis)</tspan></text>
-      <text class="s" x="210" y="70" text-anchor="middle">3&times; conv 5&times;5 stride 2, GDN</text><text class="s" x="210" y="88" text-anchor="middle">residual bottleneck, attention</text>
-      <rect class="bx" x="340" y="40" width="96" height="50" rx="10"/><text class="m" x="388" y="63" text-anchor="middle">y</text><text class="s" x="388" y="80" text-anchor="middle">192&times;H/8&times;W/8</text>
-      <rect class="bx-n" x="470" y="20" width="236" height="90" rx="10"/><text class="t" x="588" y="48" text-anchor="middle">Checkerboard coding</text>
-      <text class="s" x="588" y="70" text-anchor="middle">pass 1: anchors, in parallel</text><text class="s" x="588" y="88" text-anchor="middle">pass 2: non-anchors, given anchors</text>
-      <rect class="bx" x="736" y="40" width="70" height="50" rx="10"/><text class="m" x="771" y="70" text-anchor="middle">&#375;</text>
-      <rect class="bx-n" x="836" y="20" width="200" height="90" rx="10"/><text class="t" x="936" y="48" text-anchor="middle">g<tspan dy="4" font-size="11">s</tspan><tspan dy="-4"> (synthesis)</tspan></text>
-      <text class="s" x="936" y="70" text-anchor="middle">3&times; deconv stride 2, inverse GDN</text><text class="s" x="936" y="88" text-anchor="middle">residual bottleneck, attention</text>
-      <rect class="bx" x="1060" y="40" width="54" height="50" rx="10"/><text class="m" x="1087" y="70" text-anchor="middle">r&#x302;</text>
-      <path class="ln" d="M80 65H106" marker-end="url(#arr)"/><path class="ln" d="M312 65H338" marker-end="url(#arr)"/>
-      <path class="ln" d="M436 65H468" marker-end="url(#arr)"/><path class="ln" d="M706 65H734" marker-end="url(#arr)"/>
-      <path class="ln" d="M806 65H834" marker-end="url(#arr)"/><path class="ln" d="M1036 65H1058" marker-end="url(#arr)"/>
-      <!-- entropy parameters -->
-      <rect class="bx" x="470" y="134" width="236" height="50" rx="10"/><text class="t" x="588" y="156" text-anchor="middle" style="font-size:14px">Entropy parameters (&mu;, &sigma;)</text>
-      <text class="s" x="588" y="174" text-anchor="middle">hyperprior + masked 5&times;5 context</text>
-      <path class="ln" d="M560 134V112" marker-end="url(#arr)"/>
-      <path class="ln-d" d="M640 110V132" marker-end="url(#arr)"/><text class="s" x="648" y="126" style="fill:var(--accent)">anchors</text>
-      <!-- hyperprior -->
-      <rect class="bx" x="340" y="226" width="110" height="56" rx="10"/><text class="t" x="395" y="250" text-anchor="middle">h<tspan dy="4" font-size="11">a</tspan><tspan dy="-4"></tspan></text><text class="s" x="395" y="268" text-anchor="middle">2&times; conv stride 2</text>
-      <rect class="bx" x="478" y="230" width="92" height="50" rx="10"/><text class="m" x="524" y="253" text-anchor="middle">z</text><text class="s" x="524" y="270" text-anchor="middle">128&times;H/32</text>
-      <rect class="bx-n" x="598" y="226" width="140" height="56" rx="10"/><text class="t" x="668" y="250" text-anchor="middle">Factorized</text><text class="s" x="668" y="268" text-anchor="middle">entropy model (z bits)</text>
-      <rect class="bx" x="766" y="226" width="96" height="56" rx="10"/><text class="t" x="814" y="250" text-anchor="middle">h<tspan dy="4" font-size="11">s</tspan><tspan dy="-4"></tspan></text><text class="s" x="814" y="268" text-anchor="middle">2&times; deconv</text>
-      <path class="ln" d="M388 90V224" marker-end="url(#arr)"/><path class="ln" d="M450 255H476" marker-end="url(#arr)"/>
-      <path class="ln" d="M570 255H596" marker-end="url(#arr)"/><path class="ln" d="M738 255H764" marker-end="url(#arr)"/>
-      <path class="ln" d="M814 226V159H708" marker-end="url(#arr)"/>
-      <!-- checkerboard inset -->
-      <g transform="translate(930 168)">
-        <rect class="cb-a" x="0" y="0" width="22" height="22" rx="3"/><rect class="cb-n" x="26" y="0" width="22" height="22" rx="3"/><rect class="cb-a" x="52" y="0" width="22" height="22" rx="3"/><rect class="cb-n" x="78" y="0" width="22" height="22" rx="3"/>
-        <rect class="cb-n" x="0" y="26" width="22" height="22" rx="3"/><rect class="cb-a" x="26" y="26" width="22" height="22" rx="3"/><rect class="cb-n" x="52" y="26" width="22" height="22" rx="3"/><rect class="cb-a" x="78" y="26" width="22" height="22" rx="3"/>
-        <rect class="cb-a" x="0" y="52" width="22" height="22" rx="3"/><rect class="cb-n" x="26" y="52" width="22" height="22" rx="3"/><rect class="cb-a" x="52" y="52" width="22" height="22" rx="3"/><rect class="cb-n" x="78" y="52" width="22" height="22" rx="3"/>
-        <text class="s" x="50" y="96" text-anchor="middle">filled: pass 1, outlined: pass 2</text>
-        <text class="s" x="50" y="114" text-anchor="middle">2 steps, not one per latent</text>
-      </g>
-    </svg></div>
-    <figcaption><strong>Residual codec</strong> (10.14M parameters). A scale hyperprior (Ball&eacute; et al., 2018) predicts the mean and scale of every latent. Attention modules and residual bottleneck blocks follow Cheng et al. (2020). The checkerboard context model (He et al., 2021) decodes the latent in two parallel passes instead of one slow autoregressive pass.</figcaption>
+    <div class="plate"><img src="static/fig/hyres_codec.svg" alt="Residual codec: analysis transform, quantization and arithmetic coding of y with entropy parameters from a hyperprior and a checkerboard context model, then synthesis transform." width="680" height="640" style="max-width:680px"></div>
+    <figcaption><strong>Figure 2. Residual codec</strong> (10.14M parameters). Layer lists match <span class="op">models/checkerboard.py</span>. A scale hyperprior (Ball&eacute; et al., 2018) predicts the mean and scale of every latent. Attention modules and residual bottleneck blocks follow Cheng et al. (2020). The checkerboard context model (He et al., 2021) decodes the latent in two parallel passes instead of one slow autoregressive pass.</figcaption>
   </figure>
 
   <h3>Training: start sharp, then trade bits away</h3>
