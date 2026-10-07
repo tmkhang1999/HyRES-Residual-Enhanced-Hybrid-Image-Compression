@@ -309,7 +309,7 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
 
   <figure class="card diagram">
     <div class="plate"><img src="static/fig/hyres_pipeline.svg" alt="HyRES pipeline: the encoder sends a quality-1 JPEG plus an entropy-coded residual; the decoder adds the decoded residual back to the decoded JPEG." width="656" height="500"></div>
-    <figcaption><strong>Figure 1. Pipeline.</strong> The decoded JPEG <em>x<sub>J</sub></em> is subtracted from the input, and only the residual <em>r</em> goes through the learned codec. The decoder adds the decoded residual back. Thumbnails are real Phase 1 outputs on kodim23 (residuals amplified 2&times;). Bitrates are Kodak averages; the residual latents dominate at this operating point. The released weights include no refinement network.</figcaption>
+    <figcaption><strong>Figure 1. Pipeline.</strong> The decoded JPEG <em>x<sub>J</sub></em> is subtracted from the input, and only the residual <em>r</em> goes through the learned codec. The decoder adds the decoded residual back. Thumbnails and bitrates are real Phase 1 outputs on kodim23 (residuals amplified 2&times;); averaged over Kodak the total is 1.56 bpp, of which the residual takes 1.36. The released model has no refinement step, so the output is the plain sum.</figcaption>
   </figure>
 
   <h3>What the residual looks like</h3>

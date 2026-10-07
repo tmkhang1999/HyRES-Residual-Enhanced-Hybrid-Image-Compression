@@ -33,14 +33,14 @@
 <text x="370.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 370.0 236)">Attention</text>
 <rect x="322" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
 <text x="336.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 336.0 236)">Deconv &#8593;2</text>
-<text x="336.0" y="291.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H/4 &#215; W/4</text>
+<text x="336.0" y="291.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H/4 &#215; W/4 &#215; 128</text>
 <rect x="288" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
 <text x="302.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 302.0 236)">RBB</text>
 <rect x="254" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
 <text x="268.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 268.0 236)">IGDN</text>
 <rect x="220" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
 <text x="234.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 234.0 236)">Deconv &#8593;2</text>
-<text x="234.0" y="291.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H/2 &#215; W/2</text>
+<text x="234.0" y="291.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H/2 &#215; W/2 &#215; 128</text>
 <rect x="186" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
 <text x="200.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 200.0 236)">Attention</text>
 <rect x="152" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
@@ -55,6 +55,7 @@
 <path d="M82 236 L24 236" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
 <text x="30" y="230" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#333333" text-anchor="end"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">r&#770;</tspan></text>
 <path d="M384 96 L526 96 L526 110" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
+<circle cx="526" cy="96" r="2.5" fill="#333333"/>
 <text x="468" y="90" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#333333" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y</tspan></text>
 <rect x="514" y="112" width="24" height="22" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1"/>
 <text x="526.0" y="126.96" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Q</text>
@@ -71,6 +72,7 @@
 <rect x="506" y="204" width="40" height="22" rx="4" fill="#b8dcd6" stroke="#2f7d74" stroke-width="1"/>
 <text x="526.0" y="218.96" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">AD</text>
 <path d="M526 226 L526 236 L386 236" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
+<circle cx="526" cy="236" r="2.5" fill="#333333"/>
 <text x="468" y="230" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#333333" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y&#770;</tspan></text>
 <rect x="584" y="112" width="64" height="156" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
 <text x="616" y="190" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 616 190)">Entropy model</text>
@@ -87,7 +89,7 @@
 <rect x="686" y="66" width="108" height="36" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
 <text x="740.0" y="88.14" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#333333" text-anchor="middle">Hyper analysis <tspan font-family="'Times New Roman', Times, serif" font-style="italic">h</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">a</tspan><tspan dy="-3"></tspan></text>
 <path d="M740 102 L740 116" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<text x="748" y="112" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" fill="#333333" text-anchor="start"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">z</tspan></text>
+<text x="748" y="112" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#333333" text-anchor="start"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">z</tspan>  H/32 &#215; W/32</text>
 <rect x="686" y="118" width="108" height="36" rx="4" fill="#b8dcd6" stroke="#2f7d74" stroke-width="1"/>
 <text x="740.0" y="133.18" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#333333" text-anchor="middle">Q, AE / AD</text>
 <text x="740.0" y="146.45" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">factorized prior</text>
@@ -106,6 +108,8 @@
 <text x="880.0" y="239.18" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#333333" text-anchor="middle">Context model</text>
 <text x="880.0" y="252.45" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">masked Conv 5&#215;5</text>
 <path d="M828 242 L796 242" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
+<text x="880" y="278" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">pass 2 only; pass 1 uses</text>
+<text x="880" y="291" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">the hyperprior alone</text>
 <rect x="842" y="66" width="16" height="16" rx="2" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="1"/>
 <text x="850.0" y="78" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
 <rect x="862" y="66" width="16" height="16" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1"/>
@@ -146,5 +150,5 @@
 <text x="140.7" y="337" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="start">Entropy coding</text>
 <rect x="248.09999999999997" y="327" width="18" height="12" rx="2" fill="#ffffff" stroke="#333333" stroke-width="1"/>
 <text x="272.09999999999997" y="337" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="start">Quantizer</text>
-<text x="952" y="337" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#666666" text-anchor="end">RBB: residual bottleneck block. Conv/Deconv: 5&#215;5, stride 2</text>
+<text x="952" y="337" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="end">GDN: generalized divisive normalization. RBB: residual bottleneck block. Conv/Deconv: 5&#215;5, stride 2</text>
 </svg>

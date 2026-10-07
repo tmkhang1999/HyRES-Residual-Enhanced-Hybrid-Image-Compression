@@ -12,7 +12,7 @@
 
 </div>
 
-**Figure 1.** HyRES stores a quality-1 JPEG plus a learned code for the residual *r* = *x* - *x*<sub>J</sub>, the part the JPEG got wrong. The decoder adds the decoded residual back. Thumbnails are real outputs of the released model; bitrates are Kodak averages.
+**Figure 1.** HyRES stores a quality-1 JPEG plus a learned code for the residual *r* = *x* - *x*<sub>J</sub>, the part the JPEG got wrong. The decoder adds the decoded residual back. Thumbnails and bitrates are real outputs of the released model on Kodak image 23 (residuals amplified 2x); averaged over Kodak the total is 1.56 bpp.
 
 ## Overview
 

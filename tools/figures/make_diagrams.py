@@ -13,6 +13,7 @@ The thumbnails in Fig. 1 are real Phase 1 outputs. Usage (from the repo root):
 """
 import argparse
 import base64
+import csv
 import io
 import os
 import sys
@@ -128,6 +129,19 @@ def load(path):
     return np.asarray(Image.open(path).convert("RGB"), dtype=np.float64)
 
 
+def image_bpp(eval_dir, image):
+    """Measured bitrates of one image from evaluate.sh's metrics.csv, so the figure matches its thumbnails."""
+    path = os.path.join(eval_dir, "metrics.csv")
+    if not os.path.isfile(path):
+        sys.exit(f"error: missing {path}; run scripts/evaluate.sh first")
+    with open(path) as f:
+        for row in csv.DictReader(f):
+            if os.path.splitext(row["filename"])[0] == image:
+                total, jpeg = float(row["total_bpp"]), float(row["jpeg_bpp"])
+                return {"total": total, "jpeg": jpeg, "residual": total - jpeg}
+    sys.exit(f"error: {image} not found in {path}")
+
+
 def legend(s, y, items):
     x = 28
     for kind, label in items:
@@ -153,6 +167,7 @@ def pipeline(eval_dir, image, kodak):
         # Residuals amplified 2x around mid-gray so they are visible in print.
         "r": thumb_uri(127.5 + 2 * (orig - jpeg)), "rhat": thumb_uri(127.5 + 2 * (recon - jpeg)),
     }
+    bpp = image_bpp(eval_dir, image)
     s = Svg(656, 500, "HyRES pipeline: JPEG base layer plus learned residual layer")
     TW, TH = 72, 48
 
@@ -164,12 +179,14 @@ def pipeline(eval_dir, image, kodak):
     s.box(244, 88, 96, 40, [("JPEG decoder", 12, "normal")])
     s.op(372, 108, "-")
     s.image(400, 84, TW, TH, t["r"]); s.text(436, 150, var("r") + " = " + var("x") + " &#8722; " + var("x", "J"), 13)
-    s.box(496, 88, 128, 40, [("Residual encoder", 12, "normal"), ("analysis + hyperprior", 10.5, "normal")],
+    s.box(496, 88, 128, 40, [("Residual encoder", 12, "normal"), (var("g", "a") + ", entropy coding", 10.5, "normal")],
           BLUE_FILL, BLUE_STROKE)
     s.arrow([(100, 108), (122, 108)])
     s.arrow([(220, 108), (242, 108)])
     s.arrow([(340, 108), (360, 108)])
     s.text(351, 101, var("x", "J"), 11)
+    s.text(380, 90, "+", 11, anchor="start")
+    s.text(356, 125, "&#8722;", 11)
     s.arrow([(382, 108), (398, 108)])
     s.arrow([(472, 108), (494, 108)])
     s.arrow([(64, 84), (64, 60), (372, 60), (372, 96)])          # x bypasses JPEG to the subtractor
@@ -178,10 +195,10 @@ def pipeline(eval_dir, image, kodak):
 
     # Bitstream
     s.text(28, 224, "Bitstream", 12, anchor="start", weight="bold")
-    s.text(28, 239, "1.56 bpp", 10.5, anchor="start", fill=MUTED)
+    s.text(28, 239, f"{bpp['total']:.2f} bpp", 10.5, anchor="start", fill=MUTED)
     s.rect(116, 204, 516, 46, TEAL_SOFT, TEAL_STROKE)
-    s.box(124, 210, 96, 34, [("JPEG &#183; 0.20 bpp", 11, "normal")], TEAL_FILL, TEAL_STROKE)
-    s.box(400, 210, 224, 34, [("Residual " + var("y") + ", " + var("z") + " &#183; 1.36 bpp", 11, "normal")],
+    s.box(124, 210, 96, 34, [(f"JPEG &#183; {bpp['jpeg']:.2f} bpp", 11, "normal")], TEAL_FILL, TEAL_STROKE)
+    s.box(400, 210, 224, 34, [("Residual " + var("y") + ", " + var("z") + f" &#183; {bpp['residual']:.2f} bpp", 11, "normal")],
           TEAL_FILL, TEAL_STROKE)
 
     # Decoder group
@@ -193,18 +210,16 @@ def pipeline(eval_dir, image, kodak):
     s.image(244, 320, TW, TH, t["xj"]); s.text(280, 384, var("x", "J"), 13)
     s.op(372, 344, "+")
     s.image(400, 320, TW, TH, t["rhat"]); s.text(436, 384, var("r", hat=True), 13)
-    s.box(496, 324, 128, 40, [("Residual decoder", 12, "normal"), ("hyperprior + synthesis", 10.5, "normal")],
+    s.box(496, 324, 128, 40, [("Residual decoder", 12, "normal"), ("entropy decoding, " + var("g", "s"), 10.5, "normal")],
           BLUE_FILL, BLUE_STROKE)
     s.arrow([(220, 344), (242, 344)])
     s.arrow([(316, 344), (360, 344)])
     s.arrow([(400, 344), (384, 344)])
     s.arrow([(496, 344), (474, 344)])
-    s.arrow([(372, 356), (372, 398)])
-    s.box(316, 400, 112, 40, [("Refinement", 12, "normal"), ("optional", 10.5, "normal")], "#ffffff", BLUE_STROKE, dash="4 3")
-    s.arrow([(428, 420), (450, 420)])
-    s.image(452, 396, TW, TH, t["xhat"]); s.text(538, 425, var("x", hat=True) + " (output)", 13, anchor="start")
+    s.arrow([(372, 356), (372, 394)])
+    s.image(336, 396, TW, TH, t["xhat"]); s.text(418, 425, var("x", hat=True) + " = " + var("x", "J") + " + " + var("r", hat=True) + "  (output)", 13, anchor="start")
 
-    legend(s, 486, [("white", "Standard JPEG"), ("blue", "Learned"), ("teal", "Entropy-coded data"), ("dash", "Optional")])
+    legend(s, 486, [("white", "Standard JPEG"), ("blue", "Learned"), ("teal", "Bitstream")])
     s.save(os.path.join(OUT, "hyres_pipeline.svg"))
 
 
@@ -213,8 +228,8 @@ def pipeline(eval_dir, image, kodak):
 G_A = [("Conv &#8595;2", "H/2 &#215; W/2 &#215; 128"), ("GDN", None), ("RBB", None), ("Attention", None),
        ("Conv &#8595;2", "H/4 &#215; W/4 &#215; 128"), ("GDN", None), ("RBB", None),
        ("Conv &#8595;2", "H/8 &#215; W/8 &#215; 192"), ("Attention", None)]
-G_S = [("Attention", None), ("Deconv &#8593;2", "H/4 &#215; W/4"), ("RBB", None), ("IGDN", None),
-       ("Deconv &#8593;2", "H/2 &#215; W/2"), ("Attention", None), ("RBB", None), ("IGDN", None),
+G_S = [("Attention", None), ("Deconv &#8593;2", "H/4 &#215; W/4 &#215; 128"), ("RBB", None), ("IGDN", None),
+       ("Deconv &#8593;2", "H/2 &#215; W/2 &#215; 128"), ("Attention", None), ("RBB", None), ("IGDN", None),
        ("Deconv &#8593;2", "H &#215; W &#215; 3")]
 TILE_W, TILE_H, PITCH, X0 = 28, 84, 34, 84
 
@@ -248,6 +263,7 @@ def codec():
 
     # Quantize + arithmetic code y; the bitstream is drawn as bits.
     s.arrow([(384, 96), (526, 96), (526, 110)])
+    s.dot(526, 96)
     s.text(468, 90, var("y"), 13)
     s.box(514, 112, 24, 22, [("Q", 11, "normal")])
     s.arrow([(526, 134), (526, 146)])
@@ -258,6 +274,7 @@ def codec():
     s.arrow([(526, 192), (526, 202)])
     s.box(506, 204, 40, 22, [("AD", 11, "normal")], TEAL_FILL, TEAL_STROKE)
     s.arrow([(526, 226), (526, 236), (386, 236)])
+    s.dot(526, 236)
     s.text(468, 230, var("y", hat=True), 13)
 
     # Entropy model as one box; it reads y (hyperprior) and decoded anchors (context).
@@ -281,7 +298,7 @@ def codec():
     s.arrow([(740, 52), (740, 64)])
     s.box(686, 66, 108, 36, [("Hyper analysis " + var("h", "a"), 11.5, "normal")], BLUE_FILL, BLUE_STROKE)
     s.arrow([(740, 102), (740, 116)])
-    s.text(748, 112, var("z"), 12, anchor="start")
+    s.text(748, 112, var("z") + "  H/32 &#215; W/32", 10.5, anchor="start")
     s.box(686, 118, 108, 36, [("Q, AE / AD", 11.5, "normal"), ("factorized prior", 10, "normal")], TEAL_FILL, TEAL_STROKE)
     s.arrow([(740, 154), (740, 168)])
     s.box(686, 170, 108, 36, [("Hyper synthesis " + var("h", "s"), 11.5, "normal")], BLUE_FILL, BLUE_STROKE)
@@ -296,6 +313,8 @@ def codec():
     s.box(828, 222, 104, 40, [("Context model", 11.5, "normal"), ("masked Conv 5&#215;5", 10, "normal")],
           BLUE_FILL, BLUE_STROKE)
     s.arrow([(828, 242), (796, 242)])
+    s.text(880, 278, "pass 2 only; pass 1 uses", 10, fill=MUTED)
+    s.text(880, 291, "the hyperprior alone", 10, fill=MUTED)
 
     # Checkerboard order: anchors decoded first, in parallel; the rest use them as context.
     ox, oy, c = 842, 66, 16
@@ -309,7 +328,8 @@ def codec():
     s.text(880, 177, "anchors, pass 2 the rest", 10, fill=MUTED)
 
     legend(s, 336, [("blue", "Learned"), ("teal", "Entropy coding"), ("white", "Quantizer")])
-    s.text(952, 337, "RBB: residual bottleneck block. Conv/Deconv: 5&#215;5, stride 2", 10.5, anchor="end", fill=MUTED)
+    s.text(952, 337, "GDN: generalized divisive normalization. RBB: residual bottleneck block. Conv/Deconv: 5&#215;5, stride 2",
+           10, anchor="end", fill=MUTED)
     s.save(os.path.join(OUT, "hyres_codec.svg"))
 
 
