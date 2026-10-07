@@ -31,10 +31,10 @@
 <path d="M560 128 L560 206" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
 <text x="28" y="224" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#333333" text-anchor="start">Bitstream</text>
 <text x="28" y="239" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#666666" text-anchor="start">1.56 bpp</text>
-<rect x="116" y="204" width="516" height="46" rx="4" fill="#eef7f6" stroke="#4f9a92" stroke-width="1"/>
-<rect x="124" y="210" width="96" height="34" rx="4" fill="#d4ece9" stroke="#4f9a92" stroke-width="1"/>
+<rect x="116" y="204" width="516" height="46" rx="4" fill="#e3f1ef" stroke="#2f7d74" stroke-width="1"/>
+<rect x="124" y="210" width="96" height="34" rx="4" fill="#b8dcd6" stroke="#2f7d74" stroke-width="1"/>
 <text x="172.0" y="230.96" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">JPEG &#183; 0.20 bpp</text>
-<rect x="400" y="210" width="224" height="34" rx="4" fill="#d4ece9" stroke="#4f9a92" stroke-width="1"/>
+<rect x="400" y="210" width="224" height="34" rx="4" fill="#b8dcd6" stroke="#2f7d74" stroke-width="1"/>
 <text x="512.0" y="230.96" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Residual <tspan font-family="'Times New Roman', Times, serif" font-style="italic">y</tspan>, <tspan font-family="'Times New Roman', Times, serif" font-style="italic">z</tspan> &#183; 1.36 bpp</text>
 <rect x="16" y="270" width="624" height="192" rx="4" fill="#f7f7f7" stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4 3"/>
 <text x="28" y="290" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#333333" text-anchor="start">Decoder</text>
@@ -70,7 +70,7 @@
 <text x="52" y="487" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="start">Standard JPEG</text>
 <rect x="153.3" y="477" width="18" height="12" rx="2" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
 <text x="177.3" y="487" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="start">Learned</text>
-<rect x="242.0" y="477" width="18" height="12" rx="2" fill="#d4ece9" stroke="#4f9a92" stroke-width="1"/>
+<rect x="242.0" y="477" width="18" height="12" rx="2" fill="#b8dcd6" stroke="#2f7d74" stroke-width="1"/>
 <text x="266.0" y="487" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="start">Entropy-coded data</text>
 <rect x="397.8" y="477" width="18" height="12" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1" stroke-dasharray="3 2"/>
 <text x="421.8" y="487" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="start">Optional</text>

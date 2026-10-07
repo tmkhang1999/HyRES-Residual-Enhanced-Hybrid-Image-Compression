@@ -137,6 +137,11 @@ def main():
     print(f"{n} images, average: {avg}")
 
     # --- showcase images: full-size comparisons + residuals ---
+    # The slider compares against JPEG at equal bitrate (same rule as Figure 4):
+    # the lowest TurboJPEG quality whose file is at least as large as HyRES's.
+    from make_plots import jpeg_at_least
+    hy_bpp = {r["id"]: r["bpp"] for r in per_image}
+    jpeg_eq = {}
     for stem in SHOWCASE:
         orig = load_rgb(os.path.join(args.kodak, f"{stem}.png"))
         jpeg = load_rgb(os.path.join(args.eval_dir, f"{stem}_jpeg.png"))
@@ -144,6 +149,10 @@ def main():
         save_webp(orig, os.path.join(OUT_IMG, "compare", f"{stem}_original.webp"))
         save_webp(jpeg, os.path.join(OUT_IMG, "compare", f"{stem}_jpeg.webp"))
         save_webp(hyres, os.path.join(OUT_IMG, "compare", f"{stem}_hyres.webp"))
+        q, jbpp, jdec = jpeg_at_least(orig, hy_bpp[stem])
+        save_webp(jdec, os.path.join(OUT_IMG, "compare", f"{stem}_jpegeq.webp"))
+        jpeg_eq[stem] = {"quality": q, "bpp": round(jbpp, 4), "psnr": round(psnr(orig, jdec), 3)}
+        print(f"{stem}: equal-bitrate JPEG q{q} {jbpp:.3f} bpp vs HyRES {hy_bpp[stem]:.3f} bpp")
         # Residual true (x - JPEG) and decoded, amplified 2x around mid-gray.
         save_webp(127.5 + 2 * (orig - jpeg), os.path.join(OUT_IMG, "residual", f"{stem}_residual.webp"))
         save_webp(127.5 + 2 * (hyres - jpeg), os.path.join(OUT_IMG, "residual", f"{stem}_residual_hat.webp"))
@@ -188,6 +197,7 @@ def main():
         "baselines": curves,
         "timing": REPORTED_TIMING,
         "showcase": SHOWCASE,
+        "showcase_jpeg_eq": jpeg_eq,
     }
     os.makedirs(OUT_DATA, exist_ok=True)
     out = os.path.join(OUT_DATA, "results.json")

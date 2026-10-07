@@ -279,12 +279,12 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
     <div class="viewer-bar">
       <div class="thumbs" id="thumbs" role="group" aria-label="Choose image"></div>
       <div class="seg" role="group" aria-label="Comparison mode">
-        <button data-mode="jpeg" aria-pressed="true">vs its JPEG base</button>
+        <button data-mode="jpeg" aria-pressed="true">vs JPEG, same size</button>
         <button data-mode="orig" aria-pressed="false">vs original</button>
       </div>
     </div>
   </div>
-  <figcaption>Drag the slider. <strong>Left:</strong> the quality-1 JPEG that HyRES starts from (or the original). <strong>Right:</strong> HyRES, decoded from a real bitstream with the released Phase 1 weights. Numbers are per image. Shown as WebP at quality 95; the PNGs are in the repository.</figcaption>
+  <figcaption>Drag the slider. <strong>Left:</strong> plain JPEG at equal file size, using the lowest quality whose file is at least as large as the HyRES file (or the original). <strong>Right:</strong> HyRES, decoded from a real bitstream with the released Phase 1 weights. Numbers are per image. At these bitrates the differences are subtle; look at edges and fine texture. Shown as WebP at quality 95.</figcaption>
 </section>
 
 <section>
@@ -476,8 +476,8 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
     // ---------- stats ----------
     var jpegAt = interp(D.jpeg.points, avg.bpp);
     var stats = [
-      ["+" + fmt(avg.psnr - avg.jpeg_psnr, 1), " dB", "over its own JPEG base layer (" + fmt(avg.jpeg_psnr, 1) + " &rarr; " + fmt(avg.psnr, 1) + " dB)"],
-      ["+" + fmt(avg.psnr - jpegAt, 1), " dB", "over plain JPEG at the same " + fmt(avg.bpp, 2) + " bpp"],
+      ["+" + fmt(avg.psnr - jpegAt, 1), " dB", "over plain JPEG at the same file size (" + fmt(avg.bpp, 2) + " bpp)"],
+      [fmt(avg.psnr, 1), " dB", "PSNR on Kodak at " + fmt(avg.bpp, 2) + " bpp, from a real bitstream"],
       [fmt(P1.params_m, 2), "M", "parameters in the residual codec"],
       ["0.76", " s", "encode + decode per Kodak image on one A40"]
     ];
@@ -504,13 +504,14 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
     function renderCmp() {
       var r = byId[state.id];
       cmp.classList.toggle("portrait", isPortrait(state.id));
-      var left = state.mode === "jpeg" ? "jpeg" : "original";
+      var left = state.mode === "jpeg" ? "jpegeq" : "original";
+      var jq = D.showcase_jpeg_eq[state.id];
       document.getElementById("cmpTop").src = IMG + "compare/" + state.id + "_" + left + ".webp";
-      document.getElementById("cmpTop").alt = (left === "jpeg" ? "JPEG quality 1" : "Original") + ", " + state.id;
+      document.getElementById("cmpTop").alt = (left === "jpegeq" ? "JPEG quality " + jq.quality + " at equal file size" : "Original") + ", " + state.id;
       document.getElementById("cmpBottom").src = IMG + "compare/" + state.id + "_hyres.webp";
       document.getElementById("cmpBottom").alt = "HyRES reconstruction, " + state.id;
-      document.getElementById("tagL").innerHTML = left === "jpeg"
-        ? "<b>JPEG q1</b><br>" + fmt(r.jpeg_bpp, 2) + " bpp &middot; " + fmt(r.jpeg_psnr, 1) + " dB"
+      document.getElementById("tagL").innerHTML = left === "jpegeq"
+        ? "<b>JPEG q" + jq.quality + "</b><br>" + fmt(jq.bpp, 2) + " bpp &middot; " + fmt(jq.psnr, 1) + " dB"
         : "<b>Original</b><br>lossless";
       document.getElementById("tagR").innerHTML = "<b>HyRES</b><br>" + fmt(r.bpp, 2) + " bpp &middot; " + fmt(r.psnr, 1) + " dB";
       thumbs.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("aria-label") === state.id ? "true" : "false"); });

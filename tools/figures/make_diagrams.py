@@ -26,8 +26,8 @@ INK = "#333333"
 MUTED = "#666666"
 GROUP_FILL, GROUP_STROKE = "#f7f7f7", "#9e9e9e"
 BLUE_FILL, BLUE_STROKE = "#dae8fc", "#6c8ebf"   # learned modules
-TEAL_FILL, TEAL_STROKE = "#d4ece9", "#4f9a92"   # entropy coding / bitstream
-TEAL_SOFT = "#eef7f6"
+TEAL_FILL, TEAL_STROKE = "#b8dcd6", "#2f7d74"   # entropy coding / bitstream (darker than blue in grayscale)
+TEAL_SOFT = "#e3f1ef"
 SANS = "Helvetica, Arial, sans-serif"
 SERIF = "'Times New Roman', Times, serif"
 
@@ -48,6 +48,11 @@ class Svg:
         st = ' font-style="italic"' if italic else ""
         self.add(f'<text x="{x}" y="{y}" font-family="{family}" font-size="{size}" font-weight="{weight}" '
                  f'fill="{fill}" text-anchor="{anchor}"{st}>{s}</text>')
+
+    def vtext(self, cx, cy, s, size=11, fill=INK):
+        """Text rotated 90 degrees counter-clockwise, centered on (cx, cy)."""
+        self.add(f'<text x="{cx}" y="{cy}" font-family="{SANS}" font-size="{size}" fill="{fill}" text-anchor="middle" '
+                 f'dominant-baseline="central" transform="rotate(-90 {cx} {cy})">{s}</text>')
 
     def box(self, x, y, w, h, lines, fill="#ffffff", stroke=INK, dash=None):
         """Box with 1-2 centered lines: (text, size, weight)."""
@@ -204,89 +209,107 @@ def pipeline(eval_dir, image, kodak):
 
 
 # ---------------------------------------------------------------- Fig. 2
-G_A = ["Conv 5&#215;5, &#8595;2", "GDN", "RBB", "Attention", "Conv 5&#215;5, &#8595;2", "GDN", "RBB",
-       "Conv 5&#215;5, &#8595;2", "Attention"]                                   # top to bottom = data order
-G_S = ["Deconv 5&#215;5, &#8593;2", "IGDN", "RBB", "Attention", "Deconv 5&#215;5, &#8593;2", "IGDN", "RBB",
-       "Deconv 5&#215;5, &#8593;2", "Attention"]                                 # bottom to top = data order
+# Layer order follows models/checkerboard.py (data order). All convolutions are 5x5 except where noted.
+G_A = [("Conv &#8595;2", "H/2 &#215; W/2 &#215; 128"), ("GDN", None), ("RBB", None), ("Attention", None),
+       ("Conv &#8595;2", "H/4 &#215; W/4 &#215; 128"), ("GDN", None), ("RBB", None),
+       ("Conv &#8595;2", "H/8 &#215; W/8 &#215; 192"), ("Attention", None)]
+G_S = [("Attention", None), ("Deconv &#8593;2", "H/4 &#215; W/4"), ("RBB", None), ("IGDN", None),
+       ("Deconv &#8593;2", "H/2 &#215; W/2"), ("Attention", None), ("RBB", None), ("IGDN", None),
+       ("Deconv &#8593;2", "H &#215; W &#215; 3")]
+TILE_W, TILE_H, PITCH, X0 = 28, 84, 34, 84
 
 
-def stack(s, x, y, w, title, layers):
-    s.rect(x, y, w, 290, BLUE_FILL, BLUE_STROKE)
-    s.text(x + w / 2, y + 20, title, 12, weight="bold")
-    for i, name in enumerate(layers):
-        s.box(x + 16, y + 32 + i * 28, w - 32, 22, [(name, 11, "normal")], "#ffffff", BLUE_STROKE)
-
-
-def coder_row(s, y, prior_label):
-    s.box(204, y - 12, 24, 24, [("Q", 12, "normal")])
-    s.box(240, y - 12, 40, 24, [("AE", 11, "normal")], TEAL_FILL, TEAL_STROKE)
-    s.rect(292, y - 9, 48, 18, TEAL_SOFT, TEAL_STROKE, rx=2)
-    s.text(316, y + 4, "0110&#8230;", 10, family="Menlo, Consolas, monospace")
-    s.box(352, y - 12, 40, 24, [("AD", 11, "normal")], TEAL_FILL, TEAL_STROKE)
-    s.arrow([(228, y), (238, y)])
-    s.line([(280, y), (292, y)])
-    s.arrow([(340, y), (350, y)])
-    if prior_label:
-        s.text(316, y + 26, prior_label, 10.5, fill=MUTED)
+def tiles(s, layers, cy, reverse):
+    """Draw a row of layer tiles; reverse=True lays data order right-to-left (synthesis)."""
+    for i, (name, shape) in enumerate(layers):
+        x = X0 + ((len(layers) - 1 - i) if reverse else i) * PITCH
+        s.rect(x, cy - TILE_H / 2, TILE_W, TILE_H, BLUE_FILL, BLUE_STROKE)
+        s.vtext(x + TILE_W / 2, cy, name, 11)
+        if shape:
+            s.text(x + TILE_W / 2, cy + TILE_H / 2 + 13, shape, 9.5, fill=MUTED)
 
 
 def codec():
-    s = Svg(680, 640, "HyRES residual codec: scale hyperprior with checkerboard context model")
-    # Main transforms
-    s.text(100, 22, var("r") + "  (3 &#215; " + var("H") + " &#215; " + var("W") + ")", 12)
-    s.arrow([(100, 28), (100, 46)])
-    stack(s, 24, 48, 152, "Analysis " + var("g", "a"), G_A)
-    s.text(580, 22, var("r", hat=True), 13)
-    s.arrow([(580, 48), (580, 30)])
-    stack(s, 504, 48, 152, "Synthesis " + var("g", "s"), G_S)
+    s = Svg(968, 356, "HyRES residual codec: main path and entropy model")
+    s.text(16, 20, "(a) Residual codec", 12, anchor="start", weight="bold")
+    s.text(680, 20, "(b) Entropy model", 12, anchor="start", weight="bold")
 
-    # Latent y: quantize, arithmetic-code, decode
-    s.line([(100, 338), (100, 372)])
-    s.text(108, 358, var("y") + "  (192 &#215; " + var("H") + "/8 &#215; " + var("W") + "/8)", 11, anchor="start")
-    s.arrow([(100, 372), (202, 372)])
-    s.dot(100, 372)
-    coder_row(s, 372, None)
-    s.arrow([(392, 372), (580, 372), (580, 340)])
-    s.text(412, 366, var("y", hat=True), 12)
-    s.dot(460, 372)
+    # Main path: analysis on top (left to right), synthesis mirrored below (right to left).
+    s.rect(52, 32, 396, 128, GROUP_FILL, GROUP_STROKE, dash="4 3")
+    s.text(62, 50, var("g", "a"), 13, anchor="start")
+    s.rect(52, 172, 396, 136, GROUP_FILL, GROUP_STROKE, dash="4 3")
+    s.text(62, 190, var("g", "s"), 13, anchor="start")
+    tiles(s, G_A, 96, reverse=False)
+    tiles(s, G_S, 236, reverse=True)
+    s.text(30, 92, var("r"), 14)
+    s.arrow([(38, 96), (82, 96)])
+    s.arrow([(82, 236), (24, 236)])
+    s.text(30, 230, var("r", hat=True), 14, anchor="end")
 
-    # Entropy parameters from hyperprior + checkerboard context of decoded anchors
-    s.box(216, 404, 180, 40, [("Entropy parameters", 12, "normal"), ("3&#215; Conv 1&#215;1", 10.5, "normal")],
+    # Quantize + arithmetic code y; the bitstream is drawn as bits.
+    s.arrow([(384, 96), (526, 96), (526, 110)])
+    s.text(468, 90, var("y"), 13)
+    s.box(514, 112, 24, 22, [("Q", 11, "normal")])
+    s.arrow([(526, 134), (526, 146)])
+    s.box(506, 148, 40, 22, [("AE", 11, "normal")], TEAL_FILL, TEAL_STROKE)
+    s.arrow([(526, 170), (526, 180)])
+    for k, bit in enumerate([1, 0, 0, 1, 1]):
+        s.rect(508 + k * 7.5, 182, 7, 10, INK if bit else "#ffffff", INK, rx=0, sw=0.8)
+    s.arrow([(526, 192), (526, 202)])
+    s.box(506, 204, 40, 22, [("AD", 11, "normal")], TEAL_FILL, TEAL_STROKE)
+    s.arrow([(526, 226), (526, 236), (386, 236)])
+    s.text(468, 230, var("y", hat=True), 13)
+
+    # Entropy model as one box; it reads y (hyperprior) and decoded anchors (context).
+    s.rect(584, 112, 64, 156, BLUE_FILL, BLUE_STROKE)
+    s.vtext(616, 190, "Entropy model", 12)
+    s.arrow([(526, 96), (616, 96), (616, 110)])
+    s.arrow([(584, 159), (548, 159)])
+    s.arrow([(584, 215), (548, 215)])
+    s.text(566, 152, "&#956;, &#963;", 11, family=SERIF, italic=True)
+    s.text(566, 208, "&#956;, &#963;", 11, family=SERIF, italic=True)
+    s.add(f'<path d="M526 236 L526 286 L616 286 L616 270" fill="none" stroke="{INK}" stroke-width="1" '
+          'stroke-dasharray="4 3" marker-end="url(#ah)"/>')
+    s.text(571, 300, "decoded anchors", 10, fill=MUTED)
+
+    # Divider between panels
+    s.line([(664, 32), (664, 308)])
+    s.parts[-1] = s.parts[-1].replace(f'stroke="{INK}"', 'stroke="#cccccc"')
+
+    # (b) Entropy model detail: hyperprior column + context model.
+    s.text(740, 46, var("y"), 13)
+    s.arrow([(740, 52), (740, 64)])
+    s.box(686, 66, 108, 36, [("Hyper analysis " + var("h", "a"), 11.5, "normal")], BLUE_FILL, BLUE_STROKE)
+    s.arrow([(740, 102), (740, 116)])
+    s.text(748, 112, var("z"), 12, anchor="start")
+    s.box(686, 118, 108, 36, [("Q, AE / AD", 11.5, "normal"), ("factorized prior", 10, "normal")], TEAL_FILL, TEAL_STROKE)
+    s.arrow([(740, 154), (740, 168)])
+    s.box(686, 170, 108, 36, [("Hyper synthesis " + var("h", "s"), 11.5, "normal")], BLUE_FILL, BLUE_STROKE)
+    s.arrow([(740, 206), (740, 220)])
+    s.box(686, 222, 108, 40, [("Entropy params", 11.5, "normal"), ("3&#215; Conv 1&#215;1", 10, "normal")],
           BLUE_FILL, BLUE_STROKE)
-    s.box(420, 404, 80, 40, [("Context", 12, "normal"), ("masked 5&#215;5", 10.5, "normal")], BLUE_FILL, BLUE_STROKE)
-    s.arrow([(460, 372), (460, 402)])
-    s.text(466, 392, "anchors", 10.5, anchor="start", fill=MUTED)
-    s.arrow([(420, 424), (398, 424)])
-    s.arrow([(260, 404), (260, 386)])
-    s.arrow([(372, 404), (372, 386)])
-    s.text(316, 398, "&#956;, &#963;", 11, family=SERIF, italic=True)
+    s.arrow([(740, 262), (740, 280)])
+    s.text(740, 294, "&#956;, &#963; per latent", 11, family=SERIF, italic=True)
 
-    # Hyperprior: h_a -> z -> factorized coding -> h_s -> entropy parameters
-    s.arrow([(100, 372), (100, 470)])
-    s.box(24, 472, 152, 48, [("Hyper analysis " + var("h", "a"), 12, "bold"), ("Conv 3&#215;3, 2&#215; Conv &#8595;2", 10.5, "normal")],
+    s.text(880, 196, "decoded anchors", 10, fill=MUTED)
+    s.arrow([(880, 202), (880, 220)])
+    s.box(828, 222, 104, 40, [("Context model", 11.5, "normal"), ("masked Conv 5&#215;5", 10, "normal")],
           BLUE_FILL, BLUE_STROKE)
-    s.line([(100, 520), (100, 560)])
-    s.text(108, 544, var("z") + "  (128 &#215; " + var("H") + "/32 &#215; " + var("W") + "/32)", 11, anchor="start")
-    s.arrow([(100, 560), (202, 560)])
-    coder_row(s, 560, "factorized prior")
-    s.arrow([(392, 560), (460, 560), (460, 522)])
-    s.box(392, 472, 136, 48, [("Hyper synthesis " + var("h", "s"), 12, "bold"), ("2&#215; Deconv &#8593;2, Conv 3&#215;3", 10.5, "normal")],
-          BLUE_FILL, BLUE_STROKE)
-    s.arrow([(460, 472), (460, 458), (306, 458), (306, 446)])
+    s.arrow([(828, 242), (796, 242)])
 
-    # Checkerboard decoding order
-    ox, oy, c = 556, 392, 20
+    # Checkerboard order: anchors decoded first, in parallel; the rest use them as context.
+    ox, oy, c = 842, 66, 16
     for i in range(4):
         for j in range(4):
-            anchor = (i + j) % 2 == 0
-            s.rect(ox + j * (c + 4), oy + i * (c + 4), c, c, BLUE_STROKE if anchor else "#ffffff", BLUE_STROKE, rx=2)
-            s.text(ox + j * (c + 4) + c / 2, oy + i * (c + 4) + 14, "1" if anchor else "2", 10.5,
-                   fill="#ffffff" if anchor else INK)
-    s.text(600, 510, "Decoding order:", 10.5, fill=MUTED)
-    s.text(600, 524, "1 anchors, then 2", 10.5, fill=MUTED)
+            a = (i + j) % 2 == 0
+            s.rect(ox + j * (c + 4), oy + i * (c + 4), c, c, BLUE_STROKE if a else "#ffffff", BLUE_STROKE, rx=2)
+            s.text(ox + j * (c + 4) + c / 2, oy + i * (c + 4) + 12, "1" if a else "2", 9.5,
+                   fill="#ffffff" if a else INK)
+    s.text(880, 164, "Checkerboard: pass 1 codes", 10, fill=MUTED)
+    s.text(880, 177, "anchors, pass 2 the rest", 10, fill=MUTED)
 
-    legend(s, 626, [("blue", "Learned module"), ("teal", "Entropy coding"), ("white", "Quantizer Q")])
-    s.text(652, 627, "RBB: residual bottleneck block", 10.5, anchor="end", fill=MUTED)
+    legend(s, 336, [("blue", "Learned"), ("teal", "Entropy coding"), ("white", "Quantizer")])
+    s.text(952, 337, "RBB: residual bottleneck block. Conv/Deconv: 5&#215;5, stride 2", 10.5, anchor="end", fill=MUTED)
     s.save(os.path.join(OUT, "hyres_codec.svg"))
 
 

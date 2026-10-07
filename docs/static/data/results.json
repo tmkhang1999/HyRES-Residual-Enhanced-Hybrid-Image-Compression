@@ -615,5 +615,37 @@
   "kodim01",
   "kodim19",
   "kodim18"
- ]
+ ],
+ "showcase_jpeg_eq": {
+  "kodim23": {
+   "quality": 70,
+   "bpp": 0.8506,
+   "psnr": 37.278
+  },
+  "kodim05": {
+   "quality": 77,
+   "bpp": 2.2981,
+   "psnr": 33.18
+  },
+  "kodim20": {
+   "quality": 80,
+   "bpp": 1.156,
+   "psnr": 36.937
+  },
+  "kodim01": {
+   "quality": 83,
+   "bpp": 2.4662,
+   "psnr": 34.274
+  },
+  "kodim19": {
+   "quality": 81,
+   "bpp": 1.652,
+   "psnr": 35.84
+  },
+  "kodim18": {
+   "quality": 78,
+   "bpp": 1.9555,
+   "psnr": 33.614
+  }
+ }
 }
