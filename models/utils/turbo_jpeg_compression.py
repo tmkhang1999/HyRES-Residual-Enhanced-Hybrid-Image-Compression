@@ -6,10 +6,10 @@ from turbojpeg import TurboJPEG
 
 
 class TurboJPEGCompression(nn.Module):
-    def __init__(self, quality=25):
+    def __init__(self, quality=10):
         super().__init__()
         self.quality = quality
-        self.jpeg = TurboJPEG(lib_path='/home/tm05393z/miniconda3/envs/myenv/lib/libturbojpeg.so')
+        self.jpeg = TurboJPEG()
         self.to_pil = transforms.ToPILImage()
         self.to_tensor = transforms.ToTensor()
         print(f"Using TurboJPEG compression with quality {quality}")
@@ -78,35 +78,68 @@ class TurboJPEGCompression(nn.Module):
 
 
 if __name__ == "__main__":
-    jpeg_compressor = TurboJPEGCompression(quality=25)
-
-    # Load image and ensure it's RGB
+    import os
+    import torch
+    from torch import nn
+    from torchvision import transforms
     from PIL import Image
-    image = Image.open("/Users/khangtran/Documents/Programming/Research/HyRES/data/train/n02971356_5846.JPEG").convert("RGB")
-    image_tensor = transforms.ToTensor()(image).unsqueeze(0)
+    from models.utils.turbo_jpeg_compression import TurboJPEGCompression
 
-    # Compress
-    compressed_data = jpeg_compressor.compress(image_tensor)
-    compressed_size = sum(len(buffer.getvalue()) for buffer in compressed_data)
-    _, c, h, w = image_tensor.shape
-    num_pixels = h * w
-    bpp = compressed_size * 8 / num_pixels
-    print(f"Image size: {num_pixels} pixels")
-    print(f"Compressed size: {compressed_size} bytes")
-    print(f"Bits per pixel: {bpp:.4f}")
+    # Path to test images
+    # Kodak images shipped with the repo: <repo>/data/test
+    test_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "test")
 
-    # Decompress
-    decompressed_tensor = jpeg_compressor.decompress(compressed_data, device=torch.device("cpu"))
-    print(f"Decompressed tensor shape: {decompressed_tensor.shape}")
-    # decompressed_image = transforms.ToPILImage()(decompressed_tensor[0])
-    # decompressed_image.show()
+    # Set quality levels to test
+    quality_levels = [1, 10, 25, 50, 75, 95]
 
-    # Show the residual map between original and decompressed image in tensor
-    residual_map = image_tensor[0] - decompressed_tensor[0]
-    # residual_map = transforms.ToPILImage()(residual_map.cpu())
-    # residual_map.show()
+    for quality in quality_levels:
+        print(f"Testing JPEG quality level: {quality}")
+        jpeg_compressor = TurboJPEGCompression(quality=quality)
 
-    x_hat = decompressed_tensor[0] + residual_map
-    # x_hat = torch.clamp(x_hat, 0, 1)
-    x_hat = transforms.ToPILImage()(x_hat.cpu())
-    x_hat.show()
+        total_bpp = 0
+        total_mse = 0
+        total_psnr = 0
+        image_count = 0
+
+        # Process all images in the test directory
+        for filename in os.listdir(test_dir):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+                image_path = os.path.join(test_dir, filename)
+
+                try:
+                    # Load image and convert to tensor
+                    image = Image.open(image_path).convert("RGB")
+                    image_tensor = transforms.ToTensor()(image).unsqueeze(0)
+
+                    # Compress
+                    compressed_data = jpeg_compressor.compress(image_tensor)
+                    compressed_size = sum(len(buffer.getvalue()) for buffer in compressed_data)
+                    _, c, h, w = image_tensor.shape
+                    num_pixels = h * w
+                    bpp = compressed_size * 8 / num_pixels
+
+                    # Decompress
+                    decompressed_tensor = jpeg_compressor.decompress(compressed_data, device=torch.device("cpu"))
+
+                    # Calculate MSE loss (scaled to 0-255 range)
+                    mse_loss = nn.MSELoss(reduction='mean')
+                    mse = mse_loss(image_tensor, decompressed_tensor) * 255 ** 2
+                    psnr = 10 * torch.log10(255 ** 2 / mse) if mse > 0 else torch.tensor(float('inf'))
+
+                    # Accumulate metrics
+                    total_bpp += bpp
+                    total_mse += mse.item()
+                    total_psnr += psnr.item()
+                    image_count += 1
+
+                    print(f"  {filename}: Bpp: {bpp:.4f}, MSE: {mse.item():.4f}, PSNR: {psnr.item():.2f} dB")
+
+                except Exception as e:
+                    print(f"  Error processing {filename}: {e}")
+
+        # Calculate and display averages
+        if image_count > 0:
+            avg_bpp = total_bpp / image_count
+            avg_mse = total_mse / image_count
+            print(f"\nQuality {quality} - Average Bpp: {avg_bpp:.4f}, Average MSE: {avg_mse:.4f}, Average PSNR: {total_psnr / image_count:.2f} dB")
+            print("=" * 80)

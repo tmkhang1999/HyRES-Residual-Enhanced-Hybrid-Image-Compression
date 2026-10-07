@@ -66,6 +66,10 @@ class PostProcessTrainer:
                 # Base model only checkpoint
                 model.load_state_dict(checkpoint["state_dict"], strict=False)
 
+        # This script trains the refinement net, so keep it in the forward pass
+        # even when the loaded checkpoint had no refine.* weights yet.
+        model.use_refine = True
+
         # Freeze base model parameters
         for name, param in model.named_parameters():
             if not (name.startswith('se_block.') or name.startswith('refine.')):

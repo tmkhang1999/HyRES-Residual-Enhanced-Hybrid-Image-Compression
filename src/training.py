@@ -220,6 +220,9 @@ def main(argv):
         print("Loading", args.checkpoint)
         checkpoint = torch.load(args.checkpoint, map_location=device)
         net.load_state_dict(checkpoint["state_dict"])
+        # Refinement is trained jointly here, so keep it on even if the
+        # checkpoint predates it (load_state_dict turns it off in that case).
+        net.use_refine = True
         last_epoch = checkpoint["epoch"] + 1
         optimizer.load_state_dict(checkpoint["optimizer"])
         aux_optimizer.load_state_dict(checkpoint["aux_optimizer"])

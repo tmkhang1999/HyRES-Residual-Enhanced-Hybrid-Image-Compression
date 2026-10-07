@@ -1,4 +1,5 @@
 import argparse
+import math
 import sys
 import os
 from pathlib import Path
@@ -100,12 +101,12 @@ def process_image(model, img_path, output_dir, device, save_components=False):
         residual_hat_vis = out_net["residual_hat"] * 0.5 + 0.5
         save_image(residual_hat_vis, residual_hat_path)
 
-    # Calculate y bpp
-    y_bpp = 0
-    for string_list in out_enc["strings"][0]:  # First element is y strings (anchor + non-anchor)
-        for s in string_list:
-            y_bpp += len(s) * 8
-    y_bpp /= num_pixels
+    # Calculate y bpp. strings[0] = [anchor, non_anchor], each a list of
+    # per-sub-grid string lists, so count bytes at any nesting depth.
+    def _nbytes(obj):
+        return len(obj) if isinstance(obj, bytes) else sum(_nbytes(o) for o in obj)
+
+    y_bpp = _nbytes(out_enc["strings"][0]) * 8 / num_pixels
 
     # Calculate z bpp
     z_bpp = 0
@@ -121,8 +122,8 @@ def process_image(model, img_path, output_dir, device, save_components=False):
 
     # Quality metrics
     mse = torch.nn.functional.mse_loss(x, out_dec["x_hat"]).item()
-    mse_db = mse * 255 ** 2
-    psnr_val = -10 * math.log10(mse_db)
+    mse_db = mse * 255 ** 2  # MSE on the 0-255 scale (not dB, despite the name)
+    psnr_val = 10 * math.log10(255 ** 2 / mse_db)
 
     # Calculate MS-SSIM if available
     try:
@@ -133,7 +134,7 @@ def process_image(model, img_path, output_dir, device, save_components=False):
 
     print(f"Processed {img_path}")
     print(f"Total bpp: {total_bpp:.4f} (JPEG: {jpeg_bpp:.4f}, Y: {y_bpp:.5f}, Z: {z_bpp:.5f})")
-    print(f"MSE: {mse_db:.4f})")
+    print(f"MSE (0-255): {mse_db:.4f}")
     print(f"PSNR: {psnr_val:.2f} dB, MS-SSIM: {msssim_val:.4f}")
     print(f"Encoding time: {enc_time:.4f}s, Decoding time: {dec_time:.4f}s")
 
@@ -155,11 +156,12 @@ def main(argv):
     args = parse_args(argv)
 
     # Set up device
+    # No MPS: CompressAI's Gaussian likelihood uses erfc, which MPS lacks.
     if args.cuda and torch.cuda.is_available():
         device = torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
     else:
+        if args.cuda:
+            print("CUDA not available; running on CPU.")
         device = torch.device("cpu")
 
     print(f"Using device: {device}")
@@ -219,7 +221,7 @@ def main(argv):
         print("\nAverage metrics:")
         print(f"Total bpp: {avg_metrics['total_bpp']:.4f} (JPEG: {avg_metrics['jpeg_bpp']:.4f}, "
               f"Y: {avg_metrics['y_bpp']:.5f}, Z: {avg_metrics['z_bpp']:.5f})")
-        print(f"MSE: {avg_metrics['mse']:.4f} dB")
+        print(f"MSE (0-255): {avg_metrics['mse']:.4f}")
         print(f"PSNR: {avg_metrics['psnr']:.2f} dB, MS-SSIM: {avg_metrics['ms_ssim']:.4f}")
         print(f"Encoding time: {avg_metrics['enc_time']:.4f}s, Decoding time: {avg_metrics['dec_time']:.4f}s")
 
@@ -248,6 +250,5 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    import math  # For log calculations
 
     main(sys.argv[1:])

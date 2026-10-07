@@ -136,9 +136,13 @@ class LightWeightCheckerboard(CompressionModel):
         y_hat = y_anchor_hat + y_non_anchor_hat
         x_hat = self.g_s(y_hat)
 
-        # Calculate likelihoods
-        scales = scales_anchor + scales_non_anchor
-        means = means_anchor + means_non_anchor
+        # Calculate likelihoods. Each position must be scored with the params of
+        # its own checkerboard half, because those are the only params the
+        # decoder has when it decodes that position. Summing both halves' params
+        # (as earlier versions did) gives a rate estimate no bitstream can reach.
+        anchor_mask = self._split_tensor(torch.ones_like(y), "anchor")
+        scales = scales_anchor * anchor_mask + scales_non_anchor * (1 - anchor_mask)
+        means = means_anchor * anchor_mask + means_non_anchor * (1 - anchor_mask)
         _, y_likelihoods = self.gaussian_conditional(y, scales, means=means)
 
         return {
@@ -156,13 +160,40 @@ class LightWeightCheckerboard(CompressionModel):
             split[:, :, 1::2, 0::2] = x[:, :, 1::2, 0::2]
         return split
 
-    def _compress_part(self, x, scales, means):
-        indexes = self.gaussian_conditional.build_indexes(scales)
-        return self.gaussian_conditional.compress(x, indexes, means=means)
+    # Sub-grid offsets (row, col) of each checkerboard half.
+    _GRIDS = {"anchor": ((0, 0), (1, 1)), "non_anchor": ((0, 1), (1, 0))}
 
-    def _decompress_part(self, strings, scales, means):
-        indexes = self.gaussian_conditional.build_indexes(scales)
-        return self.gaussian_conditional.decompress(strings, indexes, means=means)
+    def _compress_part(self, x, scales, means, mode):
+        """Entropy-code only the positions of one checkerboard half.
+
+        Coding the full tensor would also spend bits on the other half's
+        zero-filled positions. Returns one string list per sub-grid.
+        """
+        strings = []
+        for r, c in self._GRIDS[mode]:
+            xs = x[:, :, r::2, c::2].contiguous()
+            if xs.numel() == 0:  # latent with a single row/column
+                strings.append([])
+                continue
+            indexes = self.gaussian_conditional.build_indexes(scales[:, :, r::2, c::2].contiguous())
+            strings.append(self.gaussian_conditional.compress(xs, indexes, means=means[:, :, r::2, c::2].contiguous()))
+        return strings
+
+    def _decompress_part(self, strings, scales, means, mode):
+        """Decode one checkerboard half back into a full-size latent.
+
+        Positions not coded in this pass get round(0 - mean) + mean, which is
+        exactly what the training forward pass produces for its zero-filled
+        half, so g_s and the context model see the inputs they were trained on.
+        """
+        out = torch.round(-means) + means
+        for (r, c), s in zip(self._GRIDS[mode], strings):
+            if not s:
+                continue
+            ms = means[:, :, r::2, c::2].contiguous()
+            indexes = self.gaussian_conditional.build_indexes(scales[:, :, r::2, c::2].contiguous())
+            out[:, :, r::2, c::2] = self.gaussian_conditional.decompress(s, indexes, means=ms)
+        return out
 
     def compress(self, x):
         # Analysis
@@ -179,17 +210,17 @@ class LightWeightCheckerboard(CompressionModel):
             torch.cat([latent_params, torch.zeros_like(latent_params)], dim=1)
         )
         scales_anchor, means_anchor = anchor_params.chunk(2, 1)
-        anchor_strings = self._compress_part(y_anchor, scales_anchor, means_anchor)
+        anchor_strings = self._compress_part(y_anchor, scales_anchor, means_anchor, "anchor")
 
         # Split and compress non-anchor pixels
-        y_anchor_hat = self._decompress_part(anchor_strings, scales_anchor, means_anchor)
+        y_anchor_hat = self._decompress_part(anchor_strings, scales_anchor, means_anchor, "anchor")
         ctx_params = self.context_prediction(y_anchor_hat)
         non_anchor_params = self.param_aggregation(
             torch.cat([latent_params, ctx_params], dim=1)
         )
         scales_non_anchor, means_non_anchor = non_anchor_params.chunk(2, 1)
         y_non_anchor = self._split_tensor(y, "non_anchor")
-        non_anchor_strings = self._compress_part(y_non_anchor, scales_non_anchor, means_non_anchor)
+        non_anchor_strings = self._compress_part(y_non_anchor, scales_non_anchor, means_non_anchor, "non_anchor")
 
         return {
             "strings": [[anchor_strings, non_anchor_strings], z_strings],
@@ -218,7 +249,7 @@ class LightWeightCheckerboard(CompressionModel):
         scales_anchor, means_anchor = anchor_params.chunk(2, 1)
 
         # Decompress anchor pixels
-        y_anchor_hat = self._decompress_part(strings[0][0], scales_anchor, means_anchor)
+        y_anchor_hat = self._decompress_part(strings[0][0], scales_anchor, means_anchor, "anchor")
 
         # Process non-anchor pixels using context
         ctx_params = self.context_prediction(y_anchor_hat)
@@ -228,11 +259,13 @@ class LightWeightCheckerboard(CompressionModel):
         scales_non_anchor, means_non_anchor = non_anchor_params.chunk(2, 1)
 
         # Decompress non-anchor pixels
-        y_non_anchor_hat = self._decompress_part(strings[0][1], scales_non_anchor, means_non_anchor)
+        y_non_anchor_hat = self._decompress_part(strings[0][1], scales_non_anchor, means_non_anchor, "non_anchor")
 
         # Combine and reconstruct
         y_hat = y_anchor_hat + y_non_anchor_hat
-        x_hat = self.g_s(y_hat).clamp_(0, 1)
+        # No clamp: this is a signed residual, not an image. The caller clamps
+        # the final JPEG + residual sum.
+        x_hat = self.g_s(y_hat)
 
         return {
             "x_hat": x_hat,
