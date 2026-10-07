@@ -175,3 +175,9 @@ data/train
 models/pretrained/*
 checkpoint
 test.py
+
+# Local secrets, run outputs and experiment logs
+kaggle.json
+logs/
+output/
+data/Reconstructed/
