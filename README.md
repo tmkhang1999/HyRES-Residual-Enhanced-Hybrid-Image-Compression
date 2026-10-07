@@ -38,7 +38,7 @@ JPEG is fast and supported everywhere but loses detail at low bitrates; learned 
 
 **Figure 2.** The residual codec. (a) The analysis transform *g*<sub>a</sub> maps the residual to a latent *y* at 1/8 resolution, which is quantized and arithmetic-coded; the synthesis transform *g*<sub>s</sub> maps the decoded latent back. (b) The entropy model predicts a mean and scale for every latent from a hyperprior ([Balle et al., ICLR 2018](https://arxiv.org/abs/1802.01436)) and a checkerboard context model that decodes in two parallel passes ([He et al., CVPR 2021](https://arxiv.org/abs/2103.15306)). Attention and residual bottleneck blocks follow [Cheng et al., CVPR 2020](https://arxiv.org/abs/2001.01568).
 
-**Training.** Loss `bpp + lambda * MSE` on Mini-ImageNet (60k images), 256x256 crops, one NVIDIA A40. Training runs in phases: a high lambda (0.045) first so the model learns to reconstruct, then lambda is lowered step by step down to 0.002, each phase starting from the previous best checkpoint.
+**Training.** Loss `bpp + lambda * MSE` on Mini-ImageNet (60k images), 256x256 crops, one NVIDIA A40. Training runs in six phases, one per lambda: Phase 1 uses a high lambda (0.045) so the model learns to reconstruct, then lambda is lowered step by step down to 0.002 in Phase 6, each phase starting from the previous best checkpoint. The released model is Phase 1.
 
 ## Results
 

@@ -252,8 +252,10 @@ def codec():
     # Main path: analysis on top (left to right), synthesis mirrored below (right to left).
     s.rect(52, 32, 396, 128, GROUP_FILL, GROUP_STROKE, dash="4 3")
     s.text(62, 50, var("g", "a"), 13, anchor="start")
+    s.text(82, 50, "runs in the encoder", 10.5, anchor="start", fill=MUTED)
     s.rect(52, 172, 396, 136, GROUP_FILL, GROUP_STROKE, dash="4 3")
     s.text(62, 190, var("g", "s"), 13, anchor="start")
+    s.text(82, 190, "runs in the decoder", 10.5, anchor="start", fill=MUTED)
     tiles(s, G_A, 96, reverse=False)
     tiles(s, G_S, 236, reverse=True)
     s.text(30, 92, var("r"), 14)
@@ -279,7 +281,8 @@ def codec():
 
     # Entropy model as one box; it reads y (hyperprior) and decoded anchors (context).
     s.rect(584, 112, 64, 156, BLUE_FILL, BLUE_STROKE)
-    s.vtext(616, 190, "Entropy model", 12)
+    s.vtext(608, 190, "Entropy model", 12)
+    s.vtext(628, 190, "used by encoder and decoder", 10, fill=MUTED)
     s.arrow([(526, 96), (616, 96), (616, 110)])
     s.arrow([(584, 159), (548, 159)])
     s.arrow([(584, 215), (548, 215)])
