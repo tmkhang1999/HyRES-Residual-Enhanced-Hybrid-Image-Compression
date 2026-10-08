@@ -1,157 +1,172 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 968 356" width="968" height="356" role="img" aria-label="HyRES residual codec: main path and entropy model">
 <title>HyRES residual codec: main path and entropy model</title>
-<defs><marker id="ah" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 1 L10 5 L0 9 z" fill="#333333"/></marker></defs>
 <rect width="968" height="356" fill="#ffffff"/>
-<text x="16" y="20" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#333333" text-anchor="start">(a) Residual codec</text>
-<text x="680" y="20" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#333333" text-anchor="start">(b) Entropy model</text>
-<rect x="52" y="32" width="396" height="128" rx="4" fill="#f7f7f7" stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4 3"/>
-<text x="62" y="50" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#333333" text-anchor="start"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">g</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">a</tspan><tspan dy="-3"></tspan></text>
-<text x="82" y="50" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#666666" text-anchor="start">runs in the encoder</text>
-<rect x="52" y="172" width="396" height="136" rx="4" fill="#f7f7f7" stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4 3"/>
-<text x="62" y="190" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#333333" text-anchor="start"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">g</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">s</tspan><tspan dy="-3"></tspan></text>
-<text x="82" y="190" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#666666" text-anchor="start">runs in the decoder</text>
-<rect x="84" y="54.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="98.0" y="96" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 98.0 96)">Conv &#8595;2</text>
-<text x="98.0" y="151.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H/2 &#215; W/2 &#215; 128</text>
-<rect x="118" y="54.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="132.0" y="96" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 132.0 96)">GDN</text>
-<rect x="152" y="54.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="166.0" y="96" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 166.0 96)">RBB</text>
-<rect x="186" y="54.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="200.0" y="96" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 200.0 96)">Attention</text>
-<rect x="220" y="54.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="234.0" y="96" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 234.0 96)">Conv &#8595;2</text>
-<text x="234.0" y="151.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H/4 &#215; W/4 &#215; 128</text>
-<rect x="254" y="54.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="268.0" y="96" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 268.0 96)">GDN</text>
-<rect x="288" y="54.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="302.0" y="96" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 302.0 96)">RBB</text>
-<rect x="322" y="54.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="336.0" y="96" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 336.0 96)">Conv &#8595;2</text>
-<text x="336.0" y="151.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H/8 &#215; W/8 &#215; 192</text>
-<rect x="356" y="54.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="370.0" y="96" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 370.0 96)">Attention</text>
-<rect x="356" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="370.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 370.0 236)">Attention</text>
-<rect x="322" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="336.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 336.0 236)">Deconv &#8593;2</text>
-<text x="336.0" y="291.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H/4 &#215; W/4 &#215; 128</text>
-<rect x="288" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="302.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 302.0 236)">RBB</text>
-<rect x="254" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="268.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 268.0 236)">IGDN</text>
-<rect x="220" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="234.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 234.0 236)">Deconv &#8593;2</text>
-<text x="234.0" y="291.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H/2 &#215; W/2 &#215; 128</text>
-<rect x="186" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="200.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 200.0 236)">Attention</text>
-<rect x="152" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="166.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 166.0 236)">RBB</text>
-<rect x="118" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="132.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 132.0 236)">IGDN</text>
-<rect x="84" y="194.0" width="28" height="84" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="98.0" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 98.0 236)">Deconv &#8593;2</text>
-<text x="98.0" y="291.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#666666" text-anchor="middle">H &#215; W &#215; 3</text>
-<text x="30" y="92" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#333333" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">r</tspan></text>
-<path d="M38 96 L82 96" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<path d="M82 236 L24 236" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<text x="30" y="230" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#333333" text-anchor="end"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">r&#770;</tspan></text>
-<path d="M384 96 L526 96 L526 110" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<circle cx="526" cy="96" r="2.5" fill="#333333"/>
-<text x="468" y="90" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#333333" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y</tspan></text>
-<rect x="514" y="112" width="24" height="22" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1"/>
-<text x="526.0" y="126.96" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Q</text>
-<path d="M526 134 L526 146" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<rect x="506" y="148" width="40" height="22" rx="4" fill="#b8dcd6" stroke="#2f7d74" stroke-width="1"/>
-<text x="526.0" y="162.96" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">AE</text>
-<path d="M526 170 L526 180" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<rect x="508.0" y="182" width="7" height="10" rx="0" fill="#333333" stroke="#333333" stroke-width="0.8"/>
-<rect x="515.5" y="182" width="7" height="10" rx="0" fill="#ffffff" stroke="#333333" stroke-width="0.8"/>
-<rect x="523.0" y="182" width="7" height="10" rx="0" fill="#ffffff" stroke="#333333" stroke-width="0.8"/>
-<rect x="530.5" y="182" width="7" height="10" rx="0" fill="#333333" stroke="#333333" stroke-width="0.8"/>
-<rect x="538.0" y="182" width="7" height="10" rx="0" fill="#333333" stroke="#333333" stroke-width="0.8"/>
-<path d="M526 192 L526 202" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<rect x="506" y="204" width="40" height="22" rx="4" fill="#b8dcd6" stroke="#2f7d74" stroke-width="1"/>
-<text x="526.0" y="218.96" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">AD</text>
-<path d="M526 226 L526 236 L386 236" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<circle cx="526" cy="236" r="2.5" fill="#333333"/>
-<text x="468" y="230" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#333333" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y&#770;</tspan></text>
-<rect x="584" y="112" width="64" height="156" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="608" y="190" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#333333" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 608 190)">Entropy model</text>
-<text x="628" y="190" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#666666" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 628 190)">used by encoder and decoder</text>
-<path d="M526 96 L616 96 L616 110" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<path d="M584 159 L548 159" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<path d="M584 215 L548 215" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<text x="566" y="152" font-family="'Times New Roman', Times, serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle" font-style="italic">&#956;, &#963;</text>
-<text x="566" y="208" font-family="'Times New Roman', Times, serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle" font-style="italic">&#956;, &#963;</text>
-<path d="M526 236 L526 286 L616 286 L616 270" fill="none" stroke="#333333" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#ah)"/>
-<text x="571" y="300" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">decoded anchors</text>
-<path d="M664 32 L664 308" fill="none" stroke="#cccccc" stroke-width="1"/>
-<text x="740" y="46" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#333333" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y</tspan></text>
-<path d="M740 52 L740 64" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<rect x="686" y="66" width="108" height="36" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="740.0" y="88.14" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#333333" text-anchor="middle">Hyper analysis <tspan font-family="'Times New Roman', Times, serif" font-style="italic">h</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">a</tspan><tspan dy="-3"></tspan></text>
-<path d="M740 102 L740 116" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<text x="748" y="112" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#333333" text-anchor="start"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">z</tspan>  H/32 &#215; W/32</text>
-<rect x="686" y="118" width="108" height="36" rx="4" fill="#b8dcd6" stroke="#2f7d74" stroke-width="1"/>
-<text x="740.0" y="133.18" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#333333" text-anchor="middle">Q, AE / AD</text>
-<text x="740.0" y="146.45" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">factorized prior</text>
-<path d="M740 154 L740 168" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<rect x="686" y="170" width="108" height="36" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="740.0" y="192.14" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#333333" text-anchor="middle">Hyper synthesis <tspan font-family="'Times New Roman', Times, serif" font-style="italic">h</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">s</tspan><tspan dy="-3"></tspan></text>
-<path d="M740 206 L740 220" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<rect x="686" y="222" width="108" height="40" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="740.0" y="239.18" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#333333" text-anchor="middle">Entropy params</text>
-<text x="740.0" y="252.45" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">3&#215; Conv 1&#215;1</text>
-<path d="M740 262 L740 280" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<text x="740" y="294" font-family="'Times New Roman', Times, serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle" font-style="italic">&#956;, &#963; per latent</text>
-<text x="880" y="196" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">decoded anchors</text>
-<path d="M880 202 L880 220" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<rect x="828" y="222" width="104" height="40" rx="4" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="880.0" y="239.18" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#333333" text-anchor="middle">Context model</text>
-<text x="880.0" y="252.45" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">masked Conv 5&#215;5</text>
-<path d="M828 242 L796 242" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#ah)"/>
-<text x="880" y="278" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">pass 2 only; pass 1 uses</text>
-<text x="880" y="291" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">the hyperprior alone</text>
-<rect x="842" y="66" width="16" height="16" rx="2" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="1"/>
-<text x="850.0" y="78" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
-<rect x="862" y="66" width="16" height="16" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1"/>
-<text x="870.0" y="78" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#333333" text-anchor="middle">2</text>
-<rect x="882" y="66" width="16" height="16" rx="2" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="1"/>
-<text x="890.0" y="78" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
-<rect x="902" y="66" width="16" height="16" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1"/>
-<text x="910.0" y="78" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#333333" text-anchor="middle">2</text>
-<rect x="842" y="86" width="16" height="16" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1"/>
-<text x="850.0" y="98" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#333333" text-anchor="middle">2</text>
-<rect x="862" y="86" width="16" height="16" rx="2" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="1"/>
-<text x="870.0" y="98" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
-<rect x="882" y="86" width="16" height="16" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1"/>
-<text x="890.0" y="98" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#333333" text-anchor="middle">2</text>
-<rect x="902" y="86" width="16" height="16" rx="2" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="1"/>
-<text x="910.0" y="98" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
-<rect x="842" y="106" width="16" height="16" rx="2" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="1"/>
-<text x="850.0" y="118" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
-<rect x="862" y="106" width="16" height="16" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1"/>
-<text x="870.0" y="118" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#333333" text-anchor="middle">2</text>
-<rect x="882" y="106" width="16" height="16" rx="2" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="1"/>
-<text x="890.0" y="118" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
-<rect x="902" y="106" width="16" height="16" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1"/>
-<text x="910.0" y="118" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#333333" text-anchor="middle">2</text>
-<rect x="842" y="126" width="16" height="16" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1"/>
-<text x="850.0" y="138" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#333333" text-anchor="middle">2</text>
-<rect x="862" y="126" width="16" height="16" rx="2" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="1"/>
-<text x="870.0" y="138" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
-<rect x="882" y="126" width="16" height="16" rx="2" fill="#ffffff" stroke="#6c8ebf" stroke-width="1"/>
-<text x="890.0" y="138" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#333333" text-anchor="middle">2</text>
-<rect x="902" y="126" width="16" height="16" rx="2" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="1"/>
-<text x="910.0" y="138" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
-<text x="880" y="164" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">Checkerboard: pass 1 codes</text>
-<text x="880" y="177" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="middle">anchors, pass 2 the rest</text>
-<rect x="28" y="327" width="18" height="12" rx="2" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1"/>
-<text x="52" y="337" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="start">Learned</text>
-<rect x="116.69999999999999" y="327" width="18" height="12" rx="2" fill="#b8dcd6" stroke="#2f7d74" stroke-width="1"/>
-<text x="140.7" y="337" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="start">Entropy coding</text>
-<rect x="248.09999999999997" y="327" width="18" height="12" rx="2" fill="#ffffff" stroke="#333333" stroke-width="1"/>
-<text x="272.09999999999997" y="337" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="start">Quantizer</text>
-<text x="952" y="337" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#666666" text-anchor="end">GDN: generalized divisive normalization. RBB: residual bottleneck block. Conv/Deconv: 5&#215;5, stride 2</text>
+<text x="16" y="20" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#172033" text-anchor="start">(a)  Residual codec</text>
+<text x="680" y="20" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#172033" text-anchor="start">(b)  Entropy model</text>
+<text x="84" y="48" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#172033" text-anchor="start">Analysis transform  <tspan font-family="'Times New Roman', Times, serif" font-style="italic">g</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">a</tspan><tspan dy="-3"></tspan></text>
+<text x="290" y="48" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#475467" text-anchor="start">runs in the encoder</text>
+<text x="84" y="188" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#172033" text-anchor="start">Synthesis transform  <tspan font-family="'Times New Roman', Times, serif" font-style="italic">g</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">s</tspan><tspan dy="-3"></tspan></text>
+<text x="290" y="188" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#475467" text-anchor="start">runs in the decoder</text>
+<rect x="84" y="58.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="98.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 98.0 100)">Conv &#8595;2</text>
+<text x="98.0" y="156.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">H/2 &#215; W/2 &#215; 128</text>
+<rect x="118" y="58.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="132.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 132.0 100)">GDN</text>
+<rect x="152" y="58.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="166.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 166.0 100)">RBB</text>
+<rect x="186" y="58.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="200.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 200.0 100)">Attention</text>
+<rect x="220" y="58.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="234.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 234.0 100)">Conv &#8595;2</text>
+<text x="234.0" y="156.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">H/4 &#215; W/4 &#215; 128</text>
+<rect x="254" y="58.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="268.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 268.0 100)">GDN</text>
+<rect x="288" y="58.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="302.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 302.0 100)">RBB</text>
+<rect x="322" y="58.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="336.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 336.0 100)">Conv &#8595;2</text>
+<text x="336.0" y="156.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">H/8 &#215; W/8 &#215; 192</text>
+<rect x="356" y="58.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="370.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 370.0 100)">Attention</text>
+<rect x="356" y="202.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="370.0" y="244" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 370.0 244)">Attention</text>
+<rect x="322" y="202.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="336.0" y="244" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 336.0 244)">Deconv &#8593;2</text>
+<text x="336.0" y="300.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">H/4 &#215; W/4 &#215; 128</text>
+<rect x="288" y="202.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="302.0" y="244" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 302.0 244)">RBB</text>
+<rect x="254" y="202.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="268.0" y="244" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 268.0 244)">IGDN</text>
+<rect x="220" y="202.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="234.0" y="244" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 234.0 244)">Deconv &#8593;2</text>
+<text x="234.0" y="300.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">H/2 &#215; W/2 &#215; 128</text>
+<rect x="186" y="202.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="200.0" y="244" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 200.0 244)">Attention</text>
+<rect x="152" y="202.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="166.0" y="244" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 166.0 244)">RBB</text>
+<rect x="118" y="202.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="132.0" y="244" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 132.0 244)">IGDN</text>
+<rect x="84" y="202.0" width="28" height="84" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.5"/>
+<text x="98.0" y="244" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 98.0 244)">Deconv &#8593;2</text>
+<text x="98.0" y="300.0" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">H &#215; W &#215; 3</text>
+<text x="30" y="96" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">r</tspan></text>
+<path d="M40.0 100.0 L76.0 100.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="82.0,100.0 74.0,103.8 74.0,96.2" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<path d="M82.0 244.0 L30.0 244.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="24.0,244.0 32.0,240.2 32.0,247.8" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<text x="30" y="238" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#172033" text-anchor="end"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">r&#770;</tspan></text>
+<path d="M384.0 100.0 L526.0 100.0 L526.0 106.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="526.0,112.0 522.2,104.0 529.8,104.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<circle cx="526" cy="100" r="2.8" fill="#475467"/>
+<text x="468" y="93" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y</tspan></text>
+<rect x="514" y="114" width="24" height="22" rx="6" fill="#ffffff" stroke="#475467" stroke-width="1.5"/>
+<text x="526.0" y="128.96" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle">Q</text>
+<path d="M526.0 136.0 L526.0 144.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="526.0,150.0 522.2,142.0 529.8,142.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<rect x="506" y="152" width="40" height="22" rx="11" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.5"/>
+<text x="526" y="167" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle">AE</text>
+<path d="M526.0 174.0 L526.0 180.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="526.0,186.0 522.2,178.0 529.8,178.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<rect x="507.25" y="188" width="7" height="10" rx="0" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+<rect x="514.75" y="188" width="7" height="10" rx="0" fill="#ffffff" stroke="#172033" stroke-width="0.8"/>
+<rect x="522.25" y="188" width="7" height="10" rx="0" fill="#ffffff" stroke="#172033" stroke-width="0.8"/>
+<rect x="529.75" y="188" width="7" height="10" rx="0" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+<rect x="537.25" y="188" width="7" height="10" rx="0" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+<path d="M526.0 198.0 L526.0 202.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="526.0,208.0 522.2,200.0 529.8,200.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<rect x="506" y="210" width="40" height="22" rx="11" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.5"/>
+<text x="526" y="225" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle">AD</text>
+<path d="M526.0 232.0 L526.0 244.0 L392.0 244.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="386.0,244.0 394.0,240.2 394.0,247.8" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<circle cx="526" cy="244" r="2.8" fill="#475467"/>
+<text x="468" y="237" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y&#770;</tspan></text>
+<rect x="584" y="120" width="70" height="156" rx="12" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+<text x="612" y="198" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#172033" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 612 198)">Entropy model</text>
+<text x="634" y="198" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 634 198)">used by encoder and decoder</text>
+<path d="M526.0 100.0 L619.0 100.0 L619.0 112.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="619.0,118.0 615.2,110.0 622.8,110.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<path d="M584.0 163.0 L556.0 163.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="550.0,163.0 558.0,159.2 558.0,166.8" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<path d="M584.0 219.0 L556.0 219.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="550.0,219.0 558.0,215.2 558.0,222.8" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<text x="567" y="156" font-family="'Times New Roman', Times, serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" font-style="italic">&#956;, &#963;</text>
+<text x="567" y="212" font-family="'Times New Roman', Times, serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" font-style="italic">&#956;, &#963;</text>
+<path d="M526.0 244.0 L526.0 296.0 L619.0 296.0 L619.0 284.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 3"/>
+<polygon points="619.0,278.0 622.8,286.0 615.2,286.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<text x="572" y="312" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle">decoded anchors</text>
+<path d="M668.0 32.0 L668.0 312.0" fill="none" stroke="#d9e0e8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="742" y="50" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y</tspan></text>
+<path d="M742.0 56.0 L742.0 62.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="742.0,68.0 738.2,60.0 745.8,60.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<rect x="688" y="70" width="108" height="38" rx="12" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+<text x="742.0" y="92.84" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#172033" text-anchor="middle">Hyper analysis <tspan font-family="'Times New Roman', Times, serif" font-style="italic">h</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">a</tspan><tspan dy="-3"></tspan></text>
+<path d="M742.0 108.0 L742.0 116.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="742.0,122.0 738.2,114.0 745.8,114.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<text x="750" y="118" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#172033" text-anchor="start"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">z</tspan>  H/32 &#215; W/32</text>
+<rect x="688" y="124" width="108" height="40" rx="12" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.7"/>
+<text x="742.0" y="139.09" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#172033" text-anchor="middle">Q, AE / AD</text>
+<text x="742.0" y="156.68" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="middle">factorized prior</text>
+<path d="M742.0 164.0 L742.0 172.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="742.0,178.0 738.2,170.0 745.8,170.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<rect x="688" y="180" width="108" height="38" rx="12" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+<text x="742.0" y="202.84" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#172033" text-anchor="middle">Hyper synthesis <tspan font-family="'Times New Roman', Times, serif" font-style="italic">h</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">s</tspan><tspan dy="-3"></tspan></text>
+<path d="M742.0 218.0 L742.0 226.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="742.0,232.0 738.2,224.0 745.8,224.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<rect x="688" y="234" width="108" height="42" rx="12" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+<text x="742.0" y="250.09" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#172033" text-anchor="middle">Entropy params</text>
+<text x="742.0" y="267.68" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="middle">3&#215; Conv 1&#215;1</text>
+<path d="M742.0 276.0 L742.0 286.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="742.0,292.0 738.2,284.0 745.8,284.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<text x="742" y="306" font-family="'Times New Roman', Times, serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" font-style="italic">&#956;, &#963; per latent</text>
+<rect x="832" y="234" width="112" height="42" rx="12" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+<text x="888.0" y="250.09" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#172033" text-anchor="middle">Context model</text>
+<text x="888.0" y="267.68" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="middle">masked Conv 5&#215;5</text>
+<path d="M832.0 255.0 L804.0 255.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="798.0,255.0 806.0,251.2 806.0,258.8" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<text x="888" y="212" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle">decoded anchors</text>
+<path d="M888.0 217.0 L888.0 226.0" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="888.0,232.0 884.2,224.0 891.8,224.0" fill="#475467" stroke="#475467" stroke-width="1" stroke-linejoin="round"/>
+<text x="888" y="292" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle">pass 2 only; pass 1 uses</text>
+<text x="888" y="305" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle">the hyperprior alone</text>
+<rect x="850" y="62" width="17" height="17" rx="3" fill="#1677ff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="858.5" y="74.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
+<rect x="871" y="62" width="17" height="17" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="879.5" y="74.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#172033" text-anchor="middle">2</text>
+<rect x="892" y="62" width="17" height="17" rx="3" fill="#1677ff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="900.5" y="74.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
+<rect x="913" y="62" width="17" height="17" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="921.5" y="74.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#172033" text-anchor="middle">2</text>
+<rect x="850" y="83" width="17" height="17" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="858.5" y="95.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#172033" text-anchor="middle">2</text>
+<rect x="871" y="83" width="17" height="17" rx="3" fill="#1677ff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="879.5" y="95.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
+<rect x="892" y="83" width="17" height="17" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="900.5" y="95.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#172033" text-anchor="middle">2</text>
+<rect x="913" y="83" width="17" height="17" rx="3" fill="#1677ff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="921.5" y="95.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
+<rect x="850" y="104" width="17" height="17" rx="3" fill="#1677ff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="858.5" y="116.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
+<rect x="871" y="104" width="17" height="17" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="879.5" y="116.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#172033" text-anchor="middle">2</text>
+<rect x="892" y="104" width="17" height="17" rx="3" fill="#1677ff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="900.5" y="116.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
+<rect x="913" y="104" width="17" height="17" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="921.5" y="116.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#172033" text-anchor="middle">2</text>
+<rect x="850" y="125" width="17" height="17" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="858.5" y="137.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#172033" text-anchor="middle">2</text>
+<rect x="871" y="125" width="17" height="17" rx="3" fill="#1677ff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="879.5" y="137.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
+<rect x="892" y="125" width="17" height="17" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="900.5" y="137.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#172033" text-anchor="middle">2</text>
+<rect x="913" y="125" width="17" height="17" rx="3" fill="#1677ff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="921.5" y="137.5" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ffffff" text-anchor="middle">1</text>
+<text x="888" y="178" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle">Checkerboard: pass 1 codes</text>
+<text x="888" y="191" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle">anchors, pass 2 the rest</text>
+<rect x="16" y="332" width="18" height="12" rx="4" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.4"/>
+<text x="40" y="342" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#475467" text-anchor="start">Learned module</text>
+<rect x="150" y="332" width="26" height="12" rx="6" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.4"/>
+<text x="182" y="342" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#475467" text-anchor="start">Entropy coding (AE/AD)</text>
+<rect x="330" y="332" width="18" height="12" rx="3" fill="#ffffff" stroke="#475467" stroke-width="1.4"/>
+<text x="354" y="342" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#475467" text-anchor="start">Quantizer</text>
+<text x="952" y="342" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#475467" text-anchor="end">GDN: generalized divisive normalization.  RBB: residual bottleneck block.  Conv/Deconv: 5&#215;5, stride 2</text>
 </svg>

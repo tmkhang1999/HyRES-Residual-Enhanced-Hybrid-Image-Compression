@@ -31,15 +31,16 @@ sys.path.insert(0, os.getcwd())
 from models.utils.turbo_jpeg_compression import TurboJPEGCompression  # noqa: E402
 
 OUT = os.path.join("docs", "static", "fig")
-BLUE, ORANGE, INK, GRID = "#2a78d6", "#d9622b", "#333333", "#e6e6e6"
+# CARI palette: blue = HyRES / learned, ochre = JPEG, navy titles, slate secondary text, gray for other codecs.
+BLUE, OCHRE, NAVY, SLATE = "#1677ff", "#b7791f", "#172033", "#475467"
+MUTED, GRID, FRAME, GRAY = "#667085", "#eceef2", "#98a2b3", "#8b93a3"
 SHOWN = ["kodim01", "kodim05", "kodim23"]
 CROP_W, CROP_H = 192, 128
 
 plt.rcParams.update({
-    "font.family": "sans-serif",
-    "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
-    "font.size": 10, "axes.edgecolor": INK, "axes.labelcolor": INK, "text.color": INK,
-    "xtick.color": INK, "ytick.color": INK, "axes.linewidth": 0.8,
+    "font.family": "sans-serif", "font.sans-serif": ["DejaVu Sans", "Helvetica", "Arial"],
+    "font.size": 10, "text.color": NAVY, "axes.labelcolor": NAVY,
+    "xtick.color": MUTED, "ytick.color": MUTED, "axes.edgecolor": "#e4e7ec", "axes.linewidth": 0.8,
     "svg.fonttype": "path", "pdf.fonttype": 42,
 })
 
@@ -55,43 +56,60 @@ def save(fig, stem, exts):
 
 # ---------------------------------------------------------------- RD curve
 def rd_plot(results):
-    fig, ax = plt.subplots(figsize=(6.4, 4.6))
-    styles = {  # published codecs: recessive grays, told apart by dash pattern and marker
-        "ELIC (2022)": ("ELIC (CVPR22)", "#4d4d4d", "-", "s"),
-        "Cheng 2020": ("Cheng (CVPR20)", "#7a7a7a", "-", "^"),
-        "Balle 2018": ("Ball\u00e9 (ICLR18)", "#9a9a9a", "--", "v"),
-        "VTM (VVC)": ("VVC (VTM)", "#5f5f5f", ":", None),
+    fig, ax = plt.subplots(figsize=(8.0, 4.9))
+    styles = {  # published codecs: recessive grays told apart by marker and dash, keyed in a quiet legend
+        "ELIC (2022)": ("ELIC (CVPR22)", "#4b5565", "-", "s"),
+        "Cheng 2020": ("Cheng (CVPR20)", "#7a8394", "-", "^"),
+        "Balle 2018": ("Ball\u00e9 (ICLR18)", "#98a2b3", "--", "v"),
+        "VTM (VVC)": ("VVC (VTM)", "#667085", ":", None),
     }
     for b in results["baselines"]:
         if b["name"] not in styles:
             print(f"warning: no style for baseline {b['name']}, skipped")
             continue
-        label, color, ls, mk = styles[b["name"]]
+        text, color, ls, mk = styles[b["name"]]
         pts = np.array(b["points"])
-        ax.plot(pts[:, 0], pts[:, 1], ls, color=color, lw=1.3, marker=mk, ms=3.5, label=label)
+        ax.plot(pts[:, 0], pts[:, 1], ls, color=color, lw=1.5, marker=mk, ms=4.6, mec="white", mew=0.7,
+                zorder=2, label=text)
 
     jp = np.array(results["jpeg"]["points"])
-    ax.plot(jp[:, 0], jp[:, 1], "-", color=ORANGE, lw=1.6, marker="o", ms=3.5, label="JPEG (TurboJPEG)")
+    ax.plot(jp[:, 0], jp[:, 1], "-", color=OCHRE, lw=1.9, zorder=3)
+    ax.plot(jp[:, 0], jp[:, 1], "o", color=OCHRE, ms=4.8, mec="white", mew=0.9, zorder=4)
+    ax.text(2.07, float(np.interp(2.07, jp[:, 0], jp[:, 1])) - 1.1, "JPEG", color=OCHRE, fontsize=10.5,
+            fontweight="bold", ha="right", va="top")
 
-    est = sorted((p["bpp_est"], p["psnr"]) for p in results["reported_phases"])
-    est = np.array(est)
-    ax.plot(est[:, 0], est[:, 1], ":", color=BLUE, lw=1.2, marker="o", ms=5, mfc="white", mec=BLUE, mew=1.3,
-            label="HyRES phases (training-time estimate)")
+    est = np.array(sorted((p["bpp_est"], p["psnr"]) for p in results["reported_phases"]))
+    ax.plot(est[:, 0], est[:, 1], "o", color="white", ms=7, mec=BLUE, mew=1.7, zorder=4)
+    ax.text(est[0, 0] + 0.04, est[0, 1] - 1.0, "HyRES phases 6 to 1:\ntraining-time estimates", color=BLUE,
+            fontsize=9, va="top", ha="left", linespacing=1.35)
 
     a = results["hyres_phase1"]["average"]
-    ax.plot([a["bpp"]], [a["psnr"]], "*", color=BLUE, ms=15, mec="white", mew=0.8, zorder=5,
-            label="HyRES (real bitstream)")
     j_at = float(np.interp(a["bpp"], jp[:, 0], jp[:, 1]))
-    ax.annotate("", xy=(a["bpp"], a["psnr"] - 0.35), xytext=(a["bpp"], j_at + 0.1),
-                arrowprops=dict(arrowstyle="->", color=BLUE, lw=1.1))
-    ax.text(a["bpp"] + 0.04, (a["psnr"] + j_at) / 2 + 0.35, f"+{a['psnr'] - j_at:.1f} dB", color=BLUE,
-            fontsize=9, va="center", fontweight="bold")
+    ax.annotate("", xy=(a["bpp"], a["psnr"] - 0.45), xytext=(a["bpp"], j_at + 0.2),
+                arrowprops=dict(arrowstyle="<->", color=BLUE, lw=1.8, shrinkA=0, shrinkB=0))
+    ax.text(a["bpp"] + 0.05, (a["psnr"] + j_at) / 2 + 0.45, f"+{a['psnr'] - j_at:.1f} dB", color=BLUE,
+            fontsize=10.5, fontweight="bold", va="center")
+    ax.plot([a["bpp"]], [a["psnr"]], "o", color=BLUE, ms=15, mec="white", mew=2.2, alpha=0.35, zorder=5)
+    ax.plot([a["bpp"]], [a["psnr"]], "o", color=BLUE, ms=8.5, mec="white", mew=1.6, zorder=6)
+    ax.text(a["bpp"] + 0.07, a["psnr"] + 0.95, "HyRES\n(real bitstream)", color=NAVY, fontsize=10,
+            fontweight="bold", ha="left", va="center", linespacing=1.3)
 
-    ax.set_xlim(0, 2.0); ax.set_ylim(22, 41)
-    ax.set_xlabel("Bitrate (bpp)"); ax.set_ylabel("PSNR (dB)")
-    ax.grid(True, color=GRID, lw=0.7); ax.set_axisbelow(True)
-    ax.set_title("Kodak (24 images, RGB PSNR)", fontsize=10, loc="left")
-    ax.legend(loc="lower right", fontsize=8.5, frameon=True, framealpha=1, edgecolor="#cccccc")
+    ax.annotate("", xy=(1.74, 26.9), xytext=(1.92, 24.3),
+                arrowprops=dict(arrowstyle="->", color=MUTED, lw=1.5))
+    ax.text(1.93, 24.2, "better", color=MUTED, fontsize=10, style="italic", va="center")
+
+    leg = ax.legend(loc="lower right", bbox_to_anchor=(0.80, 0.02), frameon=False, fontsize=9, labelcolor=SLATE,
+                    title="Published codecs", handlelength=2.4, labelspacing=0.55, borderaxespad=0)
+    leg.get_title().set_fontsize(9); leg.get_title().set_color(MUTED); leg._legend_box.align = "left"
+    ax.set_xlim(0, 2.1); ax.set_ylim(22, 41.5)
+    ax.set_xlabel("Bitrate (bpp)  \u2193", fontsize=11.5, labelpad=8)
+    ax.set_ylabel("PSNR (dB)  \u2191", fontsize=11.5, labelpad=8)
+    ax.grid(True, color=GRID, lw=0.9); ax.set_axisbelow(True)
+    for sp in ax.spines.values():
+        sp.set_color("#e4e7ec")
+    ax.tick_params(length=3, color="#d0d5dd")
+    ax.set_title("Kodak, 24 images, RGB PSNR  \u00b7  JPEG uses the same TurboJPEG settings as the HyRES base layer",
+                 fontsize=9.5, color=MUTED, loc="left", pad=10)
     save(fig, "rd_kodak", ["svg", "pdf", "png"])
 
 
@@ -148,8 +166,10 @@ def visual(eval_dir, kodak):
         for row in csv.DictReader(f):
             hy[os.path.splitext(row["filename"])[0]] = float(row["total_bpp"])
 
-    fig, axes = plt.subplots(len(SHOWN), 4, figsize=(10, 2.25 * len(SHOWN)),
-                             gridspec_kw={"width_ratios": [1.5, 1, 1, 1], "wspace": 0.04, "hspace": 0.32})
+    fig, axes = plt.subplots(len(SHOWN), 4, figsize=(10.6, 2.55 * len(SHOWN)),
+                             gridspec_kw={"width_ratios": [1.45, 1, 1, 1], "wspace": 0.045, "hspace": 0.5})
+    heads = [("Full image", NAVY), ("Original", NAVY), ("JPEG, equal bitrate", OCHRE), ("HyRES (ours)", BLUE)]
+
     for r, stem in enumerate(SHOWN):
         orig = load(os.path.join(kodak, f"{stem}.png"))
         rec = load(os.path.join(eval_dir, f"{stem}_recon.png"))
@@ -159,30 +179,38 @@ def visual(eval_dir, kodak):
         x, y = textured_crop(orig)
         c = lambda a: a[y:y + CROP_H, x:x + CROP_W].astype(np.uint8)
 
-        def label(name, bpp, img):
+        def note(bpp, img, quality=None):
             m = ms_ssim(orig, img)
             ms = f" / {m:.3f}" if m is not None else ""
-            return f"{name}\n[{bpp:.3f} bpp / {psnr(orig, img):.2f} dB{ms}]"
+            first = f"q{quality} \u00b7 {bpp:.3f} bpp" if quality else f"{bpp:.3f} bpp"
+            return f"{first}\n{psnr(orig, img):.2f} dB{ms}"
 
         ax = axes[r, 0]
         ax.imshow(orig.astype(np.uint8))
-        ax.add_patch(mpatches.Rectangle((x, y), CROP_W, CROP_H, fill=False, ec=BLUE, lw=1.6))
-        ax.set_title(f"{stem}", fontsize=10.5, pad=4)
-        panels = [("Original", c(orig), None),
-                  (label(f"JPEG q{q}", jbpp, jdec), c(jdec), ORANGE),
-                  (label("HyRES (ours)", hy[stem], rec), c(rec), BLUE)]
-        for k, (title, img, col) in enumerate(panels, start=1):
+        ax.add_patch(mpatches.Rectangle((x, y), CROP_W, CROP_H, fill=False, ec=NAVY, lw=2.0))
+        ax.text(-0.05, 0.5, stem, transform=ax.transAxes, ha="right", va="center", fontsize=11.5,
+                fontweight="bold", color=NAVY)
+        panels = [(c(orig), FRAME, "crop of the original, lossless"),
+                  (c(jdec), OCHRE, note(jbpp, jdec, q)),
+                  (c(rec), BLUE, note(hy[stem], rec))]
+        for k, (img, col, caption) in enumerate(panels, start=1):
             a = axes[r, k]
             a.imshow(img, interpolation="nearest")
-            a.set_xlabel(title, fontsize=10, labelpad=4, fontweight="bold" if col == BLUE else "normal")
-            for s in a.spines.values():
-                s.set_edgecolor(col or INK); s.set_linewidth(1.6 if col else 0.8)
+            a.set_xlabel(caption, fontsize=9.5, labelpad=6, color=SLATE, linespacing=1.45)
+            for sp in a.spines.values():
+                sp.set_edgecolor(col); sp.set_linewidth(2.6)
+        axes[r, 0].set_xlabel("navy box = crop shown on the right", fontsize=9.5, labelpad=6, color=SLATE)
         for a in axes[r]:
             a.set_xticks([]); a.set_yticks([])
-        axes[r, 0].set_xlabel("Full image (crop in blue box)", fontsize=10, labelpad=4)
+        axes[r, 0].spines[:].set_edgecolor(FRAME); axes[r, 0].spines[:].set_linewidth(1.7)
         print(f"{stem}: HyRES {hy[stem]:.3f} bpp vs JPEG q{q} {jbpp:.3f} bpp, crop at {(x, y)}")
-    fig.text(0.5, 0.005, "Labels: [bitrate / PSNR / MS-SSIM], whole image. JPEG gets at least as many bits as HyRES.",
-             ha="center", fontsize=9.5, color="#555555")
+    fig.canvas.draw()  # axes resize to keep image aspect; read final positions, then align headers on one line
+    top = max(axes[0, k].get_position().y1 for k in range(4))
+    for k, (txt, col) in enumerate(heads):
+        pos = axes[0, k].get_position()
+        fig.text((pos.x0 + pos.x1) / 2, top + 0.012, txt, ha="center", va="bottom", fontsize=12, fontweight="bold", color=col)
+    fig.text(0.5, 0.0, "Under each crop: bitrate, then PSNR / MS-SSIM of the whole image. JPEG gets at least as many bits "
+             "as HyRES; crops are the most textured region of the original.", ha="center", va="top", fontsize=9.5, color=MUTED)
     save(fig, "visual_comparison", ["png", "pdf"])
 
 
