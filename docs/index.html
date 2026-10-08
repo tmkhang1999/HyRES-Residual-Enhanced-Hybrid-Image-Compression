@@ -117,7 +117,7 @@ figcaption strong { color: var(--text-2); }
 .diagram { padding: 18px; }
 /* Figures are print-style plates: always white, like a paper figure, in both themes. */
 .diagram .plate { background: #ffffff; border-radius: 8px; padding: 12px; overflow-x: auto; }
-.diagram .plate img { display: block; width: 100%; max-width: 720px; min-width: 520px; height: auto; margin: 0 auto; }
+.diagram .plate img { display: block; width: 100%; min-width: 640px; height: auto; margin: 0 auto; }
 
 /* Comparison viewer */
 .viewer { padding: 14px; }
@@ -285,17 +285,17 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
       </div>
     </div>
   </div>
-  <figcaption>Drag the slider. <strong>Left:</strong> plain JPEG at equal file size, using the lowest quality whose file is at least as large as the HyRES file; or the quality-1 JPEG that HyRES itself starts from, which uses far fewer bits and shows what the residual adds; or the original. <strong>Right:</strong> HyRES, decoded from a real bitstream with the released Phase 1 weights. Numbers are per image. At these bitrates the differences are subtle; look at edges and fine texture. Shown as WebP at quality 95.</figcaption>
+  <figcaption>Drag the slider. The left side is JPEG at equal file size (the lowest quality whose file is at least as large as the HyRES file), the quality-1 JPEG that HyRES starts from, or the original. The right side is HyRES, decoded from a real bitstream. At equal size the differences are subtle, so look at edges and fine texture.</figcaption>
 </section>
 
 <section>
   <div class="card tldr">
     <div class="kicker">TL;DR</div>
     <ul>
-      <li><strong>JPEG first, neural second.</strong> Encode with JPEG at quality 1, then let a small learned codec encode only the residual (original minus decoded JPEG).</li>
-      <li><strong>Backward compatible.</strong> The JPEG part is a standard file; any viewer can show it without the neural decoder.</li>
-      <li><strong>Small and quick.</strong> 10.14M parameters, a two-pass checkerboard entropy model, and about 0.76 s per Kodak image on one GPU.</li>
-      <li><strong>Honest numbers.</strong> Results below are re-measured from real bitstreams. Doing so exposed three codec bugs, which are fixed and documented.</li>
+      <li><strong>JPEG first, neural second.</strong> We encode with JPEG at quality 1, then a small learned codec encodes only the residual (original minus decoded JPEG).</li>
+      <li><strong>Backward compatible.</strong> The JPEG part is a standard file, so any viewer can open it without the neural decoder.</li>
+      <li><strong>Small and quick.</strong> The codec has 10.14M parameters and handles a Kodak image in about 0.76 s on one GPU.</li>
+      <li><strong>Measured from real files.</strong> All HyRES numbers come from real bitstreams, and measuring them exposed three bugs that we fixed.</li>
     </ul>
   </div>
   <div class="stats" id="stats"></div>
@@ -305,44 +305,44 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
 <section id="method">
   <div class="kicker">Method</div>
   <h2>Compress what JPEG gets wrong</h2>
-  <p class="section-sub">Standard codecs are fast and everywhere but fall apart at low bitrates. Learned codecs look far better but are big and slow. HyRES keeps JPEG as the base layer and spends neural effort only on the error.</p>
+  <p class="section-sub">JPEG is fast and universal but loses detail at low bitrates, while learned codecs compress far better but are large and slow. We keep JPEG as the base layer and use the learned codec only for what JPEG gets wrong.</p>
 
   <figure class="card diagram">
-    <div class="plate"><img src="static/fig/hyres_pipeline.svg" alt="HyRES pipeline: the encoder sends a quality-1 JPEG plus an entropy-coded residual; the decoder adds the decoded residual back to the decoded JPEG." width="656" height="500"></div>
-    <figcaption><strong>Figure 1. Pipeline.</strong> The decoded JPEG <em>x<sub>J</sub></em> is subtracted from the input, and only the residual <em>r</em> goes through the learned codec. The decoder adds the decoded residual back. Thumbnails and bitrates are real Phase 1 outputs on kodim23 (residuals amplified 2&times;); averaged over Kodak the total is 1.56 bpp, of which the residual takes 1.36. The released model has no refinement step, so the output is the plain sum.</figcaption>
+    <div class="plate"><img src="static/fig/hyres_pipeline.svg" alt="HyRES pipeline: the encoder sends a quality-1 JPEG plus an entropy-coded residual; the decoder adds the decoded residual back to the decoded JPEG." width="1000" height="410"></div>
+    <figcaption><strong>Figure 1. Pipeline.</strong> The decoded JPEG <em>x<sub>J</sub></em> is subtracted from the input, and only the residual <em>r</em> goes through the learned codec. The decoder adds the decoded residual back. Thumbnails and bitrates are real outputs on kodim23 (residual shown 2&times;). Averaged over Kodak, the total is 1.56 bpp, and the residual takes 1.36 of it.</figcaption>
   </figure>
 
   <h3>What the residual looks like</h3>
-  <p>At quality 1, JPEG keeps coarse 8&times;8 block averages and drops almost all detail and color. The residual holds everything else: edges, texture and color shifts. The codec has to reproduce it, not the whole image.</p>
+  <p>At quality 1, JPEG keeps only coarse 8&times;8 block averages. The residual holds everything else (edges, texture and color), so that is all the codec has to reproduce.</p>
   <div class="row-imgs" id="residualRow"></div>
-  <figcaption>Residuals are amplified 2&times; around mid-gray. The decoded residual is what the neural codec reconstructs from 1.36 bpp on average.</figcaption>
+  <figcaption>Residuals are amplified 2&times; around mid-gray. The decoded residual (right) costs 1.36 bpp on average.</figcaption>
 
   <h3>Residual codec</h3>
   <figure class="card diagram">
-    <div class="plate"><img src="static/fig/hyres_codec.svg" alt="Residual codec: analysis transform, quantization and arithmetic coding of y with entropy parameters from a hyperprior and a checkerboard context model, then synthesis transform." width="680" height="640" style="max-width:680px"></div>
-    <figcaption><strong>Figure 2. Residual codec</strong> (10.14M parameters). Layer lists match <span class="op">models/checkerboard.py</span>. A scale hyperprior (Ball&eacute; et al., 2018) predicts the mean and scale of every latent. Attention modules and residual bottleneck blocks follow Cheng et al. (2020). The checkerboard context model (He et al., 2021) decodes the latent in two parallel passes instead of one slow autoregressive pass.</figcaption>
+    <div class="plate"><img src="static/fig/hyres_codec.svg" alt="Residual codec: analysis transform, quantization and arithmetic coding of y with entropy parameters from a hyperprior and a checkerboard context model, then synthesis transform." width="968" height="356"></div>
+    <figcaption><strong>Figure 2. Residual codec</strong> (10.14M parameters, layers as in <span class="op">models/checkerboard.py</span>). A scale hyperprior (Ball&eacute; et al., 2018) predicts the mean and scale of every latent. Attention and residual bottleneck blocks follow Cheng et al. (2020). A checkerboard context model (He et al., 2021) decodes the latent in two parallel passes instead of one slow pass.</figcaption>
   </figure>
 
   <h3>Training: start sharp, then trade bits away</h3>
-  <p>The loss is the usual rate-distortion objective, <span class="op">bpp + &lambda;&middot;MSE</span>. Early runs at three &lambda; values confirmed the trade-off (higher &lambda;, more bits, lower MSE). So training was split into six phases: a high &lambda; first, so the model learns to reconstruct, then &lambda; lowered step by step, each phase starting from the previous best checkpoint. Data: Mini-ImageNet (60k images, 7 GB), on a single A40.</p>
+  <p>We train with the rate-distortion loss <span class="op">bpp + &lambda;&middot;MSE</span>, where &lambda; sets the trade-off between file size and error. Early runs at three &lambda; values confirmed that a higher &lambda; gives more bits and lower error. As a result, we split training into six phases: Phase 1 uses a high &lambda; so the model first learns to reconstruct, then &lambda; is lowered step by step, and each phase starts from the previous best checkpoint. We used Mini-ImageNet (60k images) on a single A40.</p>
   <div class="card" style="padding:16px 18px">
     <div class="seg" id="phaseTabs" role="group" aria-label="Choose image for the phase strip" style="margin-bottom:14px;flex-wrap:wrap"></div>
     <div class="strip" id="strip"></div>
   </div>
-  <figcaption><strong>One crop, six operating points.</strong> The 160&times;160 crop is chosen automatically where JPEG's error is largest. The PSNR under each crop is for the whole image, measured on the reconstructions saved during the project. Lower &lambda; means fewer bits, and fine texture is the first thing to go.</figcaption>
+  <figcaption><strong>One crop, six operating points.</strong> The crop (160&times;160) is placed where JPEG's error is largest. The PSNR under each crop is for the whole image. A lower &lambda; means fewer bits, and fine texture is the first thing to go.</figcaption>
 </section>
 
 <!-- Results -->
 <section id="results">
   <div class="kicker">Results</div>
   <h2>Rate-distortion on Kodak</h2>
-  <p class="section-sub">All 24 Kodak images at full resolution (768&times;512), PSNR averaged per image. Published codecs come from CompressAI's benchmark files. The JPEG curve was measured with the same TurboJPEG settings HyRES uses for its base layer.</p>
+  <p class="section-sub">All 24 Kodak images at full resolution (768&times;512), PSNR averaged per image. Published codecs come from CompressAI's benchmark files, and the JPEG curve uses the same TurboJPEG settings as the HyRES base layer.</p>
   <div class="card chart" id="rdCard">
     <div class="legend" id="rdLegend"></div>
     <svg id="rd" viewBox="0 0 900 470" role="img" aria-label="PSNR versus bits per pixel on Kodak"></svg>
     <div class="tooltip" id="rdTip"></div>
   </div>
-  <figcaption><strong>Reading the chart.</strong> The filled blue point is the only HyRES result verified from a real bitstream. It sits about 2 dB above JPEG at the same bitrate, but ELIC reaches the same 37.4 dB at 0.83 bpp, about half the bits. Hollow points are the training-time estimates for all six phases. Their PSNR used center crops, and their bpp came from a rate estimate that was too low (see below), so the true points sit further right.</figcaption>
+  <figcaption><strong>Reading the chart.</strong> The filled blue point is the only HyRES result measured from a real bitstream. It is 2.1 dB above JPEG at the same size. However, ELIC reaches the same 37.4 dB at 0.83 bpp, about half the bits. The hollow points are the training-time estimates of the six phases; their bpp came from a rate estimate that was too low (see below), so the true points lie further right.</figcaption>
 
   <div class="grid2" style="margin-top:28px">
     <div>
@@ -351,14 +351,14 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
         <svg id="speed" viewBox="0 0 520 250" role="img" aria-label="Encode plus decode time per Kodak image"></svg>
         <div class="tooltip" id="spTip"></div>
       </div>
-      <figcaption>Encode + decode seconds per Kodak image, all models on the same A40 VM, measured during the project. HyRES encoding includes the CPU-side JPEG step.</figcaption>
+      <figcaption>Encode plus decode seconds per Kodak image, all models on the same A40 machine, measured during the project. HyRES includes the CPU-side JPEG step.</figcaption>
     </div>
     <div>
       <h3 style="margin-top:0">Phase 1 at a glance</h3>
       <div class="card" style="padding:6px 16px 10px">
         <table id="glance"></table>
       </div>
-      <figcaption>Kodak averages from the real bitstream. The bitrate splits into the JPEG base, the residual latent y and the hyper-latent z.</figcaption>
+      <figcaption>Kodak averages from the real bitstream: the JPEG base, the residual latent <em>y</em> and the hyper-latent <em>z</em>.</figcaption>
     </div>
   </div>
 
@@ -374,20 +374,20 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
 <section id="fixes">
   <div class="kicker">Reproducibility</div>
   <h2>What re-measuring found</h2>
-  <p class="section-sub">During the project, every number came from the model's training-time estimate. When we later decoded real bitstreams with the surviving weights, three bugs showed up. All are fixed in the repository, and none needs retraining.</p>
+  <p class="section-sub">During the project, every number came from the model's training-time estimate. When we later decoded real bitstreams with the surviving weights, we found three bugs. All three are fixed, and none needs retraining.</p>
   <div class="notes">
-    <div class="card note"><h4>1. Clamped residual</h4><p>The decoder clamped the residual to [0, 1]. Residuals are signed, so every negative correction was lost.</p><div class="delta">24.46 &rarr; 37.41 dB</div></div>
-    <div class="card note"><h4>2. Coding empty positions</h4><p>Each checkerboard pass coded the full tensor, including the other half's empty positions. Each pass now codes only its own positions.</p><div class="delta">1.878 &rarr; 1.563 bpp</div></div>
-    <div class="card note"><h4>3. Optimistic rate estimate</h4><p>Training scored each latent with the sum of both passes' parameters, a distribution no decoder has. It now uses the same parameters as the coder, giving a slight over-estimate (1.67 bpp).</p><div class="delta">est. 1.279 vs real 1.563 bpp</div></div>
+    <div class="card note"><h4>1. Clamped residual</h4><p>The decoder clamped the residual to [0, 1], but residuals are signed, so every negative correction was lost.</p><div class="delta">24.46 &rarr; 37.41 dB</div></div>
+    <div class="card note"><h4>2. Coding empty positions</h4><p>Each checkerboard pass coded the full tensor, including the other pass's empty positions. Now each pass codes only its own positions.</p><div class="delta">1.878 &rarr; 1.563 bpp</div></div>
+    <div class="card note"><h4>3. Optimistic rate estimate</h4><p>Training scored each latent with both passes' parameters added together, which no decoder has. It now uses the coder's own parameters.</p><div class="delta">est. 1.279 vs real 1.563 bpp</div></div>
   </div>
-  <p style="margin-top:16px">Bug 3 also means every model trained so far optimized the wrong rate term. Retraining with the fixed estimate should move the whole curve, which makes it the most promising next step.</p>
+  <p style="margin-top:16px">Bug 3 also means that every model trained so far optimized the wrong rate term. Therefore, retraining with the fixed estimate is the most promising next step.</p>
 
   <h3>Limitations</h3>
   <ul class="plain">
     <li>Only the Phase 1 weights survive, so phases 2 to 6 cannot be re-measured.</li>
-    <li>Kodak was also used to pick checkpoints during training, so it is not a fully held-out test set.</li>
-    <li>MSE-only training: reconstructions are smooth rather than perceptually sharp.</li>
-    <li>Image sides must be multiples of 32. Inference runs on CUDA or CPU, not Apple MPS.</li>
+    <li>Kodak also selected checkpoints during training, so it is not fully held out.</li>
+    <li>Training uses MSE only, so reconstructions are smooth rather than sharp.</li>
+    <li>Image sides must be multiples of 32, and inference runs on CUDA or CPU (not Apple MPS).</li>
   </ul>
 </section>
 
@@ -395,10 +395,10 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
   <div class="kicker">Project history</div>
   <h2>How it got here</h2>
   <ol class="timeline" style="margin-top:18px">
-    <li><div class="when">Feb 2025</div><div class="what"><strong>Proposal.</strong> A content-aware hybrid codec: JPEG base plus a residual coded only in important regions, chosen by a learned importance map.</div></li>
-    <li><div class="when">Mar 2025</div><div class="what"><strong>Design.</strong> Survey of learned compression from 2018 to 2023. The importance map was dropped for a lightweight codec built for residuals: GDN, residual bottlenecks, attention, checkerboard context.</div></li>
-    <li><div class="when">Apr 2025</div><div class="what"><strong>First training runs.</strong> Three &lambda; and JPEG-quality settings confirmed the rate-distortion trade-off and led to the multi-phase schedule.</div></li>
-    <li><div class="when">May 2025</div><div class="what"><strong>Six phases and refinement.</strong> &lambda; from 0.045 down to 0.002, then a refinement network trained on the frozen final model.</div></li>
+    <li><div class="when">Feb 2025</div><div class="what"><strong>Proposal.</strong> A hybrid codec with a JPEG base and a residual coded only in important regions, chosen by a learned importance map.</div></li>
+    <li><div class="when">Mar 2025</div><div class="what"><strong>Design.</strong> We surveyed learned compression (2018 to 2023) and replaced the importance map with a lightweight residual codec.</div></li>
+    <li><div class="when">Apr 2025</div><div class="what"><strong>First training runs.</strong> Three runs with different &lambda; and JPEG quality confirmed the trade-off and led to the multi-phase schedule.</div></li>
+    <li><div class="when">May 2025</div><div class="what"><strong>Six phases and refinement.</strong> &lambda; from 0.045 down to 0.002, then a refinement network on the frozen final model.</div></li>
     <li><div class="when">Oct 2026</div><div class="what"><strong>Re-measurement.</strong> Real-bitstream evaluation of the surviving weights, three codec fixes, and this page.</div></li>
   </ol>
 </section>
