@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# ——— Spatial Attention (CBAM’s SA) ———
+# - - - Spatial Attention (CBAM's SA) - -  - 
 class SpatialAttention(nn.Module):
     def __init__(self, kernel_size: int = 7):
         super().__init__()
@@ -21,7 +21,7 @@ class SpatialAttention(nn.Module):
         return self.sigmoid(attn)  # (B,1,H,W)
 
 
-# ——— (Optional) Re-use your SEBlock here if you like ———
+# - - - (Optional) Re-use your SEBlock here if you like - -  - 
 class SEBlock(nn.Module):
     def __init__(self, channel, reduction=16):
         super().__init__()
@@ -40,7 +40,7 @@ class SEBlock(nn.Module):
         return x * y
 
 
-# ——— Helper for a 3×3 conv with arbitrary dilation ———
+# - - - Helper for a 3x3 conv with arbitrary dilation - -  - 
 def dilated_conv(ch_in, ch_out, dilation):
     return nn.Conv2d(
         ch_in, ch_out,
@@ -51,7 +51,7 @@ def dilated_conv(ch_in, ch_out, dilation):
     )
 
 
-# ——— MultiScaleRefine with dilations + spatial attention ———
+# - - - MultiScaleRefine with dilations + spatial attention - -  - 
 class MultiScaleRefine(nn.Module):
     def __init__(self, in_channels=3, mid_channels=64):
         super().__init__()
@@ -85,28 +85,28 @@ class MultiScaleRefine(nn.Module):
         )
 
     def forward(self, x):
-        # — initial features with channel attention —
+        # - initial features with channel attention  - 
         feat = self.act_in(self.conv_in(x))
         feat = self.se_block(feat)
 
-        # — scale 1 (orig) —
+        # - scale 1 (orig)  - 
         feat1 = self.scale1(feat)
 
-        # — scale 2 (½) —
+        # - scale 2 (1/2)  - 
         feat2 = F.interpolate(feat, scale_factor=0.5, mode='bilinear', align_corners=False)
         feat2 = self.scale2(feat2)
         feat2 = F.interpolate(feat2, size=feat.shape[2:], mode='bilinear', align_corners=False)
 
-        # — scale 3 (¼) —
+        # - scale 3 (1/4)  - 
         feat3 = F.interpolate(feat, scale_factor=0.25, mode='bilinear', align_corners=False)
         feat3 = self.scale3(feat3)
         feat3 = F.interpolate(feat3, size=feat.shape[2:], mode='bilinear', align_corners=False)
 
-        # — concat & spatial‐attention —
+        # - concat & spatial-attention  - 
         multi = torch.cat([feat1, feat2, feat3], dim=1)
         attn = self.spatial_att(multi)  # (B,1,H,W)
         multi = multi * attn
 
-        # — fuse back & residual —
+        # - fuse back & residual  - 
         out = self.fusion(multi)
         return out

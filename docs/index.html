@@ -227,8 +227,8 @@ pre {
   position: absolute; top: 10px; right: 10px; border: 1px solid var(--border); background: var(--surface);
   color: var(--text-2); border-radius: 8px; padding: 4px 10px; font: 500 12.5px Inter, sans-serif; cursor: pointer;
 }
-ul.plain { padding-left: 20px; color: var(--text-2); margin: 0 0 14px; }
-ul.plain li { margin: 5px 0; }
+ul.plain, ol.plain { padding-left: 20px; color: var(--text-2); margin: 0 0 14px; }
+ul.plain li, ol.plain li { margin: 5px 0; }
 footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-align: center; }
 .callout { padding: 14px 18px; border-radius: 12px; background: var(--accent-soft); color: var(--text-2); font-size: 15px; }
 .callout strong { color: var(--text); }
@@ -315,7 +315,7 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
   <h3>What the residual looks like</h3>
   <p>At quality 1, JPEG keeps only coarse 8&times;8 block averages. The residual holds everything else (edges, texture and color), so that is all the codec has to reproduce.</p>
   <div class="row-imgs" id="residualRow"></div>
-  <figcaption>Residuals are amplified 2&times; around mid-gray. The decoded residual (right) costs 1.36 bpp on average.</figcaption>
+  <figcaption><strong>Residuals.</strong> Residuals are amplified 2&times; around mid-gray. The decoded residual (right) costs 1.36 bpp on average.</figcaption>
 
   <h3>Residual codec</h3>
   <figure class="card diagram">
@@ -329,7 +329,7 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
     <div class="seg" id="phaseTabs" role="group" aria-label="Choose image for the phase strip" style="margin-bottom:14px;flex-wrap:wrap"></div>
     <div class="strip" id="strip"></div>
   </div>
-  <figcaption><strong>One crop, six operating points.</strong> The crop (160&times;160) is placed where JPEG's error is largest. The PSNR under each crop is for the whole image. A lower &lambda; means fewer bits, and fine texture is the first thing to go.</figcaption>
+  <figcaption><strong>Figure 3. One crop, six operating points.</strong> The crop (160&times;160) is placed where JPEG's error is largest. The PSNR under each crop is for the whole image. A lower &lambda; means fewer bits, and fine texture is the first thing to go.</figcaption>
 </section>
 
 <!-- Results -->
@@ -342,7 +342,7 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
     <svg id="rd" viewBox="0 0 900 470" role="img" aria-label="PSNR versus bits per pixel on Kodak"></svg>
     <div class="tooltip" id="rdTip"></div>
   </div>
-  <figcaption><strong>Reading the chart.</strong> The filled blue point is the only HyRES result measured from a real bitstream. It is 2.1 dB above JPEG at the same size. However, ELIC reaches the same 37.4 dB at 0.83 bpp, about half the bits. The hollow points are the training-time estimates of the six phases; their bpp came from a rate estimate that was too low (see below), so the true points lie further right.</figcaption>
+  <figcaption><strong>Figure 4. Rate-distortion on Kodak.</strong> The filled blue point is the only HyRES result measured from a real bitstream. It is 2.1 dB above JPEG at the same size. However, ELIC reaches the same 37.4 dB at 0.83 bpp, about half the bits. The hollow points are the training-time estimates of the six phases; their bpp came from a rate estimate that was too low (see below), so the true points lie further right.</figcaption>
 
   <div class="grid2" style="margin-top:28px">
     <div>
@@ -351,14 +351,14 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
         <svg id="speed" viewBox="0 0 520 250" role="img" aria-label="Encode plus decode time per Kodak image"></svg>
         <div class="tooltip" id="spTip"></div>
       </div>
-      <figcaption>Encode plus decode seconds per Kodak image, all models on the same A40 machine, measured during the project. HyRES includes the CPU-side JPEG step.</figcaption>
+      <figcaption><strong>Figure 5. Speed.</strong> Encode plus decode seconds per Kodak image, all models on the same A40 machine, measured during the project. HyRES includes the CPU-side JPEG step.</figcaption>
     </div>
     <div>
       <h3 style="margin-top:0">Phase 1 at a glance</h3>
       <div class="card" style="padding:6px 16px 10px">
         <table id="glance"></table>
       </div>
-      <figcaption>Kodak averages from the real bitstream: the JPEG base, the residual latent <em>y</em> and the hyper-latent <em>z</em>.</figcaption>
+      <figcaption><strong>Table 1. Phase 1 at a glance.</strong> Kodak averages from the real bitstream: the JPEG base, the residual latent <em>y</em> and the hyper-latent <em>z</em>.</figcaption>
     </div>
   </div>
 
@@ -389,6 +389,13 @@ footer { padding: 40px 0 56px; color: var(--text-3); font-size: 13.5px; text-ali
     <li>Training uses MSE only, so reconstructions are smooth rather than sharp.</li>
     <li>Image sides must be multiples of 32, and inference runs on CUDA or CPU (not Apple MPS).</li>
   </ul>
+
+  <h3>Next steps</h3>
+  <ol class="plain">
+    <li>Retrain all phases with the corrected rate estimate, then report a full rate-distortion curve and a BD-rate against VVC.</li>
+    <li>Add perceptual losses (VGG, GAN) for sharper reconstructions.</li>
+    <li>Train on a larger dataset and evaluate on a held-out set beyond Kodak.</li>
+  </ol>
 </section>
 
 <section id="journey">

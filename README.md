@@ -2,6 +2,8 @@
 
 # HyRES: Residual-Enhanced Hybrid Image Compression
 
+**Keep a standard JPEG, and spend the learned bits only on what JPEG gets wrong.**
+
 **Minh Khang Tran, Dinh Hoang Dai** &middot; Course research project, 2025
 
 [![Project page](https://img.shields.io/badge/Project-Page-2a78d6?logo=github)](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/)
@@ -19,6 +21,12 @@
 In this project, we combine a standard JPEG with a small learned codec (10.14M parameters). The first idea is to keep JPEG as the base layer, because it is fast and every viewer can open it. The second idea is to use the learned codec only for the residual, because that is where JPEG loses detail at low bitrates. As a result, every HyRES file still contains a valid JPEG.
 
 On Kodak, the released model reaches 37.41 dB at 1.563 bits per pixel (bpp), which is 2.1 dB above JPEG at the same file size (higher dB is better). It encodes and decodes an image in about 0.76 s on one GPU. However, state-of-the-art learned codecs are more efficient: ELIC needs only 0.83 bpp for the same quality. HyRES therefore trades some compression for a small, fast and backward-compatible codec.
+
+## Contributions
+
+1. A hybrid codec that keeps a quality-1 JPEG as a valid base layer and codes only the residual with a small learned codec (10.14M parameters).
+2. A six-phase training schedule that starts with a high lambda, so the model first learns to reconstruct, and then trades bits away step by step.
+3. A re-measurement from real bitstreams, which found and fixed three codec bugs (a clamped residual, coded empty positions and an optimistic rate estimate).
 
 ## Method
 
@@ -40,8 +48,6 @@ We evaluate on Kodak (24 images, 768x512). All HyRES numbers are measured from r
 
 **Figure 3.** Rate-distortion on Kodak. The filled blue dot is the released model; the hollow circles are training-time estimates of all six phases, not real bitstreams. Published codecs are from [CompressAI](https://github.com/InterDigitalInc/CompressAI/tree/master/results/image/kodak).
 
-From the table below, the first thing we can see is that JPEG needs 2.17 bpp to reach the quality HyRES reaches at 1.56 bpp (28% fewer bits). Moreover, HyRES is the smallest model and, apart from the 2018 hyperprior, the fastest.
-
 | Method | bpp at 37.4 dB | Params | Encode + decode (s) |
 |--------|---------------:|-------:|--------------------:|
 | JPEG (TurboJPEG) | 2.17 | - | - |
@@ -51,13 +57,29 @@ From the table below, the first thing we can see is that JPEG needs 2.17 bpp to 
 | ELIC (CVPR22) | 0.83 | 33.8M | 8.85 |
 | Cheng (CVPR20) | curve ends at 36.6 dB | 13.2M | 10.13 |
 
-Times are per Kodak image on one A40. Most of the 1.56 bpp (1.36) goes to the residual, so the gain over JPEG comes from coding those bits more efficiently.
+**Table 1.** Bits needed to reach the quality of the released model (37.4 dB) on Kodak. Times are per Kodak image on one A40.
+
+1. **HyRES beats JPEG at the same size.** JPEG needs 2.17 bpp to reach the quality HyRES reaches at 1.56 bpp (28% fewer bits).
+2. **HyRES is small and fast.** It is the smallest model in the table and, apart from the 2018 hyperprior, the fastest.
+3. **Learned codecs are still more efficient.** ELIC needs only 0.83 bpp for the same quality. Most of the 1.56 bpp (1.36) goes to the residual, so a better residual coder is where the remaining gain is.
 
 <p align="center">
   <img src="docs/static/fig/visual_comparison.png" alt="Crops of the original, JPEG at equal bitrate and HyRES on three Kodak images" width="900">
 </p>
 
 **Figure 4.** Visual comparison at equal bitrate. JPEG gets the lowest quality whose file is at least as large as the HyRES file, and each crop is the most textured region of the original. The [project page](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/) has an interactive version.
+
+## Limitations
+
+- **Only Phase 1 is verified.** Only the Phase 1 weights survive, so a full rate-distortion curve and a BD-rate against VVC need the other lambdas retrained. The [project page](https://tmkhang1999.github.io/HyRES-Residual-Enhanced-Hybrid-Image-Compression/) lists the codec bugs we fixed while re-measuring.
+- **Kodak is not fully held out.** It was also used to select checkpoints during training.
+- **Smooth reconstructions.** We train with MSE only, so reconstructions are smooth rather than sharp.
+
+## Next steps
+
+1. Retrain all phases with the corrected rate estimate, then report a full rate-distortion curve and a BD-rate against VVC.
+2. Add perceptual losses (VGG, GAN) for sharper reconstructions.
+3. Train on a larger dataset and evaluate on a held-out set beyond Kodak.
 
 ## Pretrained model
 
@@ -93,9 +115,9 @@ done
 
 Every script prints its options when run without arguments. An optional post-filter (`scripts/train_refine.sh`) can be trained on the final phase, but the released model does not use it. The scripts in `tools/figures/` rebuild every figure.
 
-## Limitations
+## Related work
 
-However, we should note three limits. First, only the Phase 1 model is verified from real bitstreams, so a full rate-distortion curve and a BD-rate against VVC need the other lambdas retrained; the project page lists the codec bugs we fixed while re-measuring. Second, Kodak also selected checkpoints during training, so it is not fully held out. Third, we train with MSE only, so reconstructions are smooth rather than sharp. In sum, perceptual losses (VGG, GAN) and a larger training set are the natural next steps.
+HyRES builds on learned image compression: the scale hyperprior of Ball&eacute; et al. (2018), the attention blocks of Cheng et al. (2020), the checkerboard context model of He et al. (2021), and ELIC (He et al., 2022) as the strongest baseline. A related line of work improves decoded JPEG images with a network after decoding, for example ARCNN (Dong et al., 2015). HyRES differs in that it sends extra bits for the residual instead of only post-processing the JPEG, while the base layer stays a standard file.
 
 ## Citation
 

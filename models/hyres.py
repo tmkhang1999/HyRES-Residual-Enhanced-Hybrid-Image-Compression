@@ -9,7 +9,7 @@ from .layers.enhancement import MultiScaleRefine
 class ResidualJPEGCompression(CompressionModel):
     """
     Combined JPEG and neural compression model that compresses residuals.
-    Optimized for CPU→CPU→GPU data flow.
+    Optimized for CPU->CPU->GPU data flow.
     """
 
     def __init__(self, base_model=None, jpeg_quality=1, se_reduction=1, **kwargs):
@@ -26,7 +26,7 @@ class ResidualJPEGCompression(CompressionModel):
     def forward(self, x, noisequant=False):
         """
         Forward pass for combined JPEG + residual compression.
-        Optimized for CPU→CPU→GPU data flow.
+        Optimized for CPU->CPU->GPU data flow.
 
         Args:
             x (torch.Tensor): Input image tensor [B, 3, H, W] with values in [0, 1]
